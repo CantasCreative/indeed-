@@ -51,6 +51,64 @@ app.get('/api/dictionaries/atmospheres', async (c) => {
 // API Routes - Banner Knowledge
 // ============================================
 
+// Import CSV data (JobsCampaigns format)
+app.post('/api/banners/import-csv', async (c) => {
+  try {
+    const { csv_data } = await c.req.json();
+    
+    if (!csv_data || !Array.isArray(csv_data)) {
+      return c.json({ success: false, error: 'Invalid CSV data format' }, 400);
+    }
+
+    // Get area dictionary for mapping
+    const areas = await db.getAreas(c.env.DB);
+    const areaMap = new Map(areas.map(a => [a.name, a.code]));
+
+    const imported = [];
+    const errors = [];
+
+    for (const row of csv_data) {
+      try {
+        // Map CSV columns to BannerKnowledge fields
+        const data: any = {
+          image_id: row['参照番号'] || row['image_id'],
+          company_name: row['企業名'] || row['company_name'],
+          job_title: row['求人'] || row['job_title'],
+          impressions: parseInt(row['表示回数'] || row['impressions']) || 0,
+          clicks: parseInt(row['クリック数'] || row['clicks']) || 0,
+          ctr: parseFloat(row['クリック率（CTR）'] || row['ctr']) || 0,
+        };
+
+        // Map area name to code
+        const areaName = row['都道府県'] || row['area'];
+        if (areaName && areaMap.has(areaName)) {
+          data.area = areaMap.get(areaName);
+        }
+
+        // Validate required fields
+        if (!data.image_id) {
+          errors.push({ row, error: '参照番号が必要です' });
+          continue;
+        }
+
+        imported.push(data);
+      } catch (error: any) {
+        errors.push({ row, error: error.message });
+      }
+    }
+
+    return c.json({ 
+      success: true, 
+      imported_count: imported.length,
+      error_count: errors.length,
+      imported_data: imported,
+      errors 
+    });
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 // Create new banner knowledge
 app.post('/api/banners', async (c) => {
   try {

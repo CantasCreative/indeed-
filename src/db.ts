@@ -36,7 +36,7 @@ export async function getAtmospheres(db: D1Database): Promise<DictionaryItem[]> 
   return result.results as DictionaryItem[];
 }
 
-// Create BannerKnowledge
+// Create BannerKnowledge (Updated)
 export async function createBannerKnowledge(
   db: D1Database,
   data: CreateBannerRequest,
@@ -45,23 +45,24 @@ export async function createBannerKnowledge(
 ): Promise<string> {
   const knowledgeId = generateId();
 
-  // Insert main record
+  // Insert main record (Updated schema)
   await db
     .prepare(`
       INSERT INTO banner_knowledge (
-        knowledge_id, image_id, product_name, job_title, employment_type,
-        clicks, ctr, banner_image_key, banner_image_url, visual_type,
-        main_color, atmosphere, extracted_text, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        knowledge_id, image_id, company_name, job_title, impressions,
+        clicks, ctr, employment_type, banner_image_key, banner_image_url, 
+        visual_type, main_color, atmosphere, extracted_text, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       knowledgeId,
       data.image_id,
-      data.product_name || null,
+      data.company_name || null,
       data.job_title || null,
-      data.employment_type || null,
+      data.impressions || 0,
       data.clicks || 0,
       data.ctr || 0.0,
+      data.employment_type || null,
       bannerImageKey || null,
       bannerImageUrl || null,
       data.visual_type || null,
@@ -72,14 +73,12 @@ export async function createBannerKnowledge(
     )
     .run();
 
-  // Insert areas (many-to-many)
-  if (data.areas && data.areas.length > 0) {
-    for (const areaCode of data.areas) {
-      await db
-        .prepare('INSERT INTO banner_areas (knowledge_id, area_code) VALUES (?, ?)')
-        .bind(knowledgeId, areaCode)
-        .run();
-    }
+  // Insert area (single selection - store as one record in banner_areas)
+  if (data.area) {
+    await db
+      .prepare('INSERT INTO banner_areas (knowledge_id, area_code) VALUES (?, ?)')
+      .bind(knowledgeId, data.area)
+      .run();
   }
 
   // Insert main appeals (many-to-many)
@@ -148,12 +147,15 @@ export async function searchBannerKnowledge(
   // Fetch related areas and appeals for each result
   const items = result.results as BannerKnowledge[];
   for (const item of items) {
-    // Get areas
+    // Get area (single selection - only one record expected)
     const areasResult = await db
-      .prepare('SELECT area_code FROM banner_areas WHERE knowledge_id = ?')
+      .prepare('SELECT area_code FROM banner_areas WHERE knowledge_id = ? LIMIT 1')
       .bind(item.knowledge_id)
       .all();
-    item.areas = areasResult.results.map((r: any) => r.area_code);
+    if (areasResult.results.length > 0) {
+      item.area = (areasResult.results[0] as any).area_code;
+      item.areas = [item.area]; // For backward compatibility
+    }
 
     // Get main appeals
     const appealsResult = await db
@@ -180,12 +182,15 @@ export async function getBannerKnowledgeById(
 
   const item = result as BannerKnowledge;
 
-  // Get areas
+  // Get area (single selection)
   const areasResult = await db
-    .prepare('SELECT area_code FROM banner_areas WHERE knowledge_id = ?')
+    .prepare('SELECT area_code FROM banner_areas WHERE knowledge_id = ? LIMIT 1')
     .bind(knowledgeId)
     .all();
-  item.areas = areasResult.results.map((r: any) => r.area_code);
+  if (areasResult.results.length > 0) {
+    item.area = (areasResult.results[0] as any).area_code;
+    item.areas = [item.area]; // For backward compatibility
+  }
 
   // Get main appeals
   const appealsResult = await db
