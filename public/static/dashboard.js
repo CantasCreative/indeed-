@@ -14,16 +14,22 @@ class BannerDashboard {
 
   async loadDictionaries() {
     try {
-      const [employmentTypes, areas, mainAppeals] = await Promise.all([
+      const [employmentTypes, areas, mainAppeals, visualTypes, mainColors, atmospheres] = await Promise.all([
         axios.get('/api/dictionaries/employment-types'),
         axios.get('/api/dictionaries/areas'),
         axios.get('/api/dictionaries/main-appeals'),
+        axios.get('/api/dictionaries/visual-types'),
+        axios.get('/api/dictionaries/main-colors'),
+        axios.get('/api/dictionaries/atmospheres'),
       ]);
 
       this.dictionaries = {
         employmentTypes: employmentTypes.data,
         areas: areas.data,
         mainAppeals: mainAppeals.data,
+        visualTypes: visualTypes.data,
+        mainColors: mainColors.data,
+        atmospheres: atmospheres.data,
       };
     } catch (error) {
       console.error('Failed to load dictionaries:', error);
@@ -312,30 +318,71 @@ class BannerDashboard {
       return;
     }
 
-    alert('AI分析機能はステップ5で実装予定です');
-    
-    // TODO: Implement AI analysis in Step 5
-    // For now, show a sample analysis
-    const sampleAnalysis = `【CTRトップ5の成功傾向分析】
+    const button = document.getElementById('aiAnalysisButton');
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>AI分析中...';
 
-1. 訴求内容の傾向
-   - 「未経験歓迎」と「高収入」の組み合わせが効果的
-   - シフト自由度を強調した訴求のCTRが高い
+    try {
+      // Get search conditions
+      const searchConditions = {
+        job_title: document.getElementById('jobTitle').value || '全職種',
+        employment_types: Array.from(document.querySelectorAll('input[name="employmentTypes"]:checked')).map(cb => {
+          const item = this.dictionaries.employmentTypes.find(et => et.code === cb.value);
+          return item ? item.name : cb.value;
+        }),
+        areas: Array.from(document.querySelectorAll('input[name="areas"]:checked')).map(cb => {
+          const item = this.dictionaries.areas.find(a => a.code === cb.value);
+          return item ? item.name : cb.value;
+        }),
+        main_appeals: Array.from(document.querySelectorAll('input[name="mainAppeals"]:checked')).map(cb => {
+          const item = this.dictionaries.mainAppeals.find(ma => ma.code === cb.value);
+          return item ? item.name : cb.value;
+        })
+      };
 
-2. デザインの特徴
-   - 人物写真（単体）を使用したバナーの成功率が高い
-   - 明るく元気な雰囲気のデザインが好反応
+      // Prepare top results with dictionary names
+      const topResults = this.searchResults.map(item => {
+        // Convert codes to names
+        const visualType = this.dictionaries.visualTypes?.find(v => v.code === item.visual_type);
+        const mainColor = this.dictionaries.mainColors?.find(c => c.code === item.main_color);
+        const atmosphere = this.dictionaries.atmospheres?.find(a => a.code === item.atmosphere);
+        const mainAppeals = (item.main_appeals || []).map(code => {
+          const appeal = this.dictionaries.mainAppeals.find(ma => ma.code === code);
+          return appeal ? appeal.name : code;
+        });
 
-3. 推奨アプローチ
-   - ターゲット層に合わせた訴求の組み合わせ
-   - 視覚的にインパクトのある人物写真の活用
-   - CTRの高い雇用形態（アルバイト・パート）を重点的に訴求
+        return {
+          ctr: item.ctr,
+          visual_type: visualType ? visualType.name : item.visual_type,
+          main_color: mainColor ? mainColor.name : item.main_color,
+          atmosphere: atmosphere ? atmosphere.name : item.atmosphere,
+          main_appeals: mainAppeals,
+          job_title: item.job_title,
+          clicks: item.clicks
+        };
+      });
 
-※この分析は検索結果のトップ${Math.min(this.searchResults.length, 5)}件を基に生成されています。`;
+      // Call AI analysis API
+      const response = await axios.post('/api/ai/analyze-trends', {
+        search_conditions: searchConditions,
+        top_results: topResults
+      });
 
-    document.getElementById('analysisPlaceholder').classList.add('hidden');
-    document.getElementById('analysisResult').classList.remove('hidden');
-    document.getElementById('analysisText').textContent = sampleAnalysis;
+      if (response.data.success) {
+        document.getElementById('analysisPlaceholder').classList.add('hidden');
+        document.getElementById('analysisResult').classList.remove('hidden');
+        document.getElementById('analysisText').textContent = response.data.analysis;
+      } else {
+        alert('AI分析に失敗しました: ' + response.data.error);
+      }
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      alert('AI分析に失敗しました。もう一度お試しください。');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = originalText;
+    }
   }
 
   copyAnalysisResult() {

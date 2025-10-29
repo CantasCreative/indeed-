@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings } from './types';
 import * as db from './db';
+import * as ai from './ai';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -137,6 +138,64 @@ app.get('/api/images/*', async (c) => {
         'Cache-Control': 'public, max-age=31536000',
       },
     });
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// ============================================
+// API Routes - AI Functions
+// ============================================
+
+// AI Function 1: Auto-tagging from banner image
+app.post('/api/ai/auto-tag', async (c) => {
+  try {
+    const { image_url, extracted_text } = await c.req.json();
+    
+    if (!image_url) {
+      return c.json({ success: false, error: 'Image URL is required' }, 400);
+    }
+
+    // Call AI service for auto-tagging
+    const tags = await ai.generateBannerTags(image_url, extracted_text || '');
+    
+    return c.json({ success: true, tags });
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// AI Function 2: Trend analysis from search results
+app.post('/api/ai/analyze-trends', async (c) => {
+  try {
+    const { search_conditions, top_results } = await c.req.json();
+    
+    if (!top_results || top_results.length === 0) {
+      return c.json({ success: false, error: 'No results to analyze' }, 400);
+    }
+
+    // Call AI service for trend analysis
+    const analysis = await ai.analyzeBannerTrends(search_conditions, top_results);
+    
+    return c.json({ success: true, analysis });
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Extract text from image (OCR)
+app.post('/api/ai/extract-text', async (c) => {
+  try {
+    const { image_url } = await c.req.json();
+    
+    if (!image_url) {
+      return c.json({ success: false, error: 'Image URL is required' }, 400);
+    }
+
+    // Call OCR service
+    const text = await ai.extractTextFromImage(image_url);
+    
+    return c.json({ success: true, extracted_text: text });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
   }

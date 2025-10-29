@@ -326,8 +326,78 @@ class BannerRegistrationForm {
       return;
     }
 
-    alert('AI機能はステップ5で実装予定です');
-    // TODO: Implement AI tag suggestion in Step 5
+    const button = document.getElementById('aiTagButton');
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>AI分析中...';
+
+    try {
+      // Step 1: Extract text from image (OCR)
+      const extractResponse = await axios.post('/api/ai/extract-text', {
+        image_url: this.uploadedImageUrl
+      });
+
+      let extractedText = '';
+      if (extractResponse.data.success) {
+        extractedText = extractResponse.data.extracted_text;
+        document.getElementById('extractedText').value = extractedText;
+      }
+
+      // Step 2: Generate tags using AI
+      const tagResponse = await axios.post('/api/ai/auto-tag', {
+        image_url: this.uploadedImageUrl,
+        extracted_text: extractedText
+      });
+
+      if (tagResponse.data.success) {
+        const tags = tagResponse.data.tags;
+
+        // Apply tags to form
+        if (tags.visual_type) {
+          // Find code from name
+          const visualType = this.dictionaries.visualTypes.find(v => v.name === tags.visual_type);
+          if (visualType) {
+            document.getElementById('visualType').value = visualType.code;
+          }
+        }
+
+        if (tags.main_color) {
+          const mainColor = this.dictionaries.mainColors.find(c => c.name === tags.main_color);
+          if (mainColor) {
+            document.getElementById('mainColor').value = mainColor.code;
+          }
+        }
+
+        if (tags.atmosphere) {
+          const atmosphere = this.dictionaries.atmospheres.find(a => a.name === tags.atmosphere);
+          if (atmosphere) {
+            document.getElementById('atmosphere').value = atmosphere.code;
+          }
+        }
+
+        if (tags.main_appeal && tags.main_appeal.length > 0) {
+          // Uncheck all first
+          document.querySelectorAll('input[name="mainAppeals"]').forEach(cb => cb.checked = false);
+          
+          // Check suggested appeals
+          tags.main_appeal.forEach(appealName => {
+            const appeal = this.dictionaries.mainAppeals.find(a => a.name === appealName);
+            if (appeal) {
+              const checkbox = document.querySelector(`input[name="mainAppeals"][value="${appeal.code}"]`);
+              if (checkbox) checkbox.checked = true;
+            }
+          });
+        }
+
+        alert('AIによるタグ提案が完了しました！\n必要に応じて修正してください。');
+      }
+    } catch (error) {
+      console.error('AI tag suggestion failed:', error);
+      alert('AIタグ提案に失敗しました。もう一度お試しください。');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = originalText;
+    }
   }
 
   async handleSubmit(e) {
