@@ -117,6 +117,12 @@ export async function searchBannerKnowledge(
     bindings.push(...params.main_appeals);
   }
 
+  // Company name filter (partial match)
+  if (params.company_name) {
+    conditions.push('bk.company_name LIKE ?');
+    bindings.push(`%${params.company_name}%`);
+  }
+
   // Job title filter (partial match)
   if (params.job_title) {
     conditions.push('bk.job_title LIKE ?');

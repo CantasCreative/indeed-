@@ -72,6 +72,7 @@ export interface CSVImportRequest {
 }
 
 export interface SearchRequest {
+  company_name?: string;
   job_title?: string;
   employment_types?: string[];
   areas?: string[];

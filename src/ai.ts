@@ -115,17 +115,22 @@ export async function analyzeBannerTrends(
 
   // Prepare analysis data
   const analysisData = topResults.map(item => ({
+    company_name: item.company_name,
+    job_title: item.job_title,
+    impressions: item.impressions,
+    clicks: item.clicks,
     ctr: item.ctr,
     visual_type: item.visual_type,
     main_color: item.main_color,
     atmosphere: item.atmosphere,
-    main_appeal: item.main_appeals,
-    job_title: item.job_title,
-    clicks: item.clicks
+    main_appeal: item.main_appeals
   }));
 
+  const companyName = searchConditions.company_name || '全企業';
+  
   const userPrompt = `# 検索条件
-- 職種名: ${jobTitle}
+- 企業名: ${companyName}
+- 求人: ${jobTitle}
 - 雇用形態: ${employmentTypeStr}
 - エリア: ${searchConditions.areas ? searchConditions.areas.join('、') : '全国'}
 - 検索結果件数: ${topResults.length}件
@@ -183,10 +188,12 @@ ${JSON.stringify(analysisData, null, 2)}
     .map(([appeal]) => appeal);
 
   const avgCTR = topResults.reduce((sum, item) => sum + (item.ctr || 0), 0) / topResults.length;
+  const avgImpressions = topResults.reduce((sum, item) => sum + (item.impressions || 0), 0) / topResults.length;
+  const avgClicks = topResults.reduce((sum, item) => sum + (item.clicks || 0), 0) / topResults.length;
 
   const simulatedResponse = `## ${jobTitle}・${employmentTypeStr} 向けバナーの成功傾向
 
-過去のCTR上位実績（平均CTR: ${avgCTR.toFixed(2)}%）を分析した結果、以下の成功パターンが確認できました。
+過去のCTR上位実績（平均CTR: ${avgCTR.toFixed(2)}%、平均表示回数: ${Math.round(avgImpressions).toLocaleString()}、平均クリック数: ${Math.round(avgClicks).toLocaleString()}）を分析した結果、以下の成功パターンが確認できました。
 
 1.  **クリエイティブ（ビジュアル）:**
     実績上位${topResults.length}件中${visualTypes[topVisualType] || 0}件が「${topVisualType}」を採用しており、視覚的インパクトを重視したデザインがクリック率向上に効果的です。特に${topResults[0]?.atmosphere || '明るく親しみやすい'}雰囲気の表現が、ターゲット層の関心を引く傾向があります。

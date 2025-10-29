@@ -67,9 +67,17 @@ class BannerDashboard {
                 </h2>
 
                 <form id="searchForm">
-                  <!-- Job Title -->
+                  <!-- Company Name -->
                   <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">職種名</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">企業名</label>
+                    <input type="text" id="companyName" 
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      placeholder="部分一致検索">
+                  </div>
+
+                  <!-- Job Title (求人) -->
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">求人</label>
                     <input type="text" id="jobTitle" 
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
                       placeholder="部分一致検索">
@@ -213,6 +221,7 @@ class BannerDashboard {
     e.preventDefault();
 
     const searchParams = {
+      company_name: document.getElementById('companyName').value || undefined,
       job_title: document.getElementById('jobTitle').value || undefined,
       employment_types: Array.from(document.querySelectorAll('input[name="employmentTypes"]:checked')).map(cb => cb.value),
       areas: Array.from(document.querySelectorAll('input[name="areas"]:checked')).map(cb => cb.value),
@@ -287,14 +296,19 @@ class BannerDashboard {
           <!-- Info -->
           <div class="flex-1">
             <div class="flex items-start justify-between mb-2">
-              <h3 class="font-semibold text-gray-800">${item.job_title || '職種名なし'}</h3>
+              <div>
+                <h3 class="font-semibold text-gray-800">${item.job_title || '求人なし'}</h3>
+                ${item.company_name ? `<p class="text-sm text-gray-600 mt-1"><i class="fas fa-building mr-1"></i>${item.company_name}</p>` : ''}
+              </div>
               <span class="text-2xl font-bold text-green-600">${(item.ctr || 0).toFixed(2)}%</span>
             </div>
             
             <div class="text-sm text-gray-600 mb-2">
+              <i class="fas fa-eye mr-1"></i>
+              表示回数: ${(item.impressions || 0).toLocaleString()}
+              <span class="mx-2">|</span>
               <i class="fas fa-mouse-pointer mr-1"></i>
-              クリック数: ${item.clicks || 0}
-              ${item.product_name ? ` | <i class="fas fa-box ml-2 mr-1"></i>${item.product_name}` : ''}
+              クリック数: ${(item.clicks || 0).toLocaleString()}
             </div>
 
             ${item.main_appeals && item.main_appeals.length > 0 ? `
@@ -326,7 +340,8 @@ class BannerDashboard {
     try {
       // Get search conditions
       const searchConditions = {
-        job_title: document.getElementById('jobTitle').value || '全職種',
+        company_name: document.getElementById('companyName').value || '全企業',
+        job_title: document.getElementById('jobTitle').value || '全求人',
         employment_types: Array.from(document.querySelectorAll('input[name="employmentTypes"]:checked')).map(cb => {
           const item = this.dictionaries.employmentTypes.find(et => et.code === cb.value);
           return item ? item.name : cb.value;
@@ -335,7 +350,7 @@ class BannerDashboard {
           const item = this.dictionaries.areas.find(a => a.code === cb.value);
           return item ? item.name : cb.value;
         }),
-        main_appeals: Array.from(document.querySelectorAll('input[name="mainAppeals"]:checked')).map(cb => {
+        main_appeals: Array.from(document.querySelectorAll('input[name="mainAppeals"]:checked']).map(cb => {
           const item = this.dictionaries.mainAppeals.find(ma => ma.code === cb.value);
           return item ? item.name : cb.value;
         })
@@ -353,13 +368,15 @@ class BannerDashboard {
         });
 
         return {
+          company_name: item.company_name,
+          job_title: item.job_title,
+          impressions: item.impressions,
+          clicks: item.clicks,
           ctr: item.ctr,
           visual_type: visualType ? visualType.name : item.visual_type,
           main_color: mainColor ? mainColor.name : item.main_color,
           atmosphere: atmosphere ? atmosphere.name : item.atmosphere,
-          main_appeals: mainAppeals,
-          job_title: item.job_title,
-          clicks: item.clicks
+          main_appeals: mainAppeals
         };
       });
 
