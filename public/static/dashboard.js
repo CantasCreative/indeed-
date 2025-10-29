@@ -350,7 +350,7 @@ class BannerDashboard {
           const item = this.dictionaries.areas.find(a => a.code === cb.value);
           return item ? item.name : cb.value;
         }),
-        main_appeals: Array.from(document.querySelectorAll('input[name="mainAppeals"]:checked']).map(cb => {
+        main_appeals: Array.from(document.querySelectorAll('input[name="mainAppeals"]:checked')).map(cb => {
           const item = this.dictionaries.mainAppeals.find(ma => ma.code === cb.value);
           return item ? item.name : cb.value;
         })
