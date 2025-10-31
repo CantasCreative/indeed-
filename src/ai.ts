@@ -1,7 +1,7 @@
 // AI Integration Functions
 
 // Gemini API Configuration
-const GEMINI_API_KEY = 'AIzaSyAN2k25Spzpmzi--u271gpa1CNNGeRCC8M'; // Gemini API Key
+const GEMINI_API_KEY = 'AIzaSyCWGfVDQDvTzc-U3U4-9zJaVp0sOpxXx-s'; // Gemini API Key
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
 // AI Function 1: Auto-tagging from banner image
