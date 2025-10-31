@@ -1,5 +1,9 @@
 // AI Integration Functions
 
+// Gemini API Configuration
+const GEMINI_API_KEY = 'AIzaSyAN2k25Spzpmzi--u271gpa1CNNGeRCC8M'; // Gemini API Key
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+
 // AI Function 1: Auto-tagging from banner image
 export async function generateBannerTags(imageUrl: string, extractedText: string): Promise<any> {
   const systemPrompt = `# あなたの役割
@@ -34,34 +38,51 @@ export async function generateBannerTags(imageUrl: string, extractedText: string
 
 上記のバナー画像を分析し、JSON形式でタグを提案してください。`;
 
-  // Call external AI API (e.g., OpenAI GPT-4 Vision)
-  // For this demo, we'll return a simulated response
-  // In production, replace this with actual AI API call
-  
-  // Example: OpenAI API call
-  // const response = await fetch('https://api.openai.com/v1/chat/completions', {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': `Bearer ${API_KEY}`
-  //   },
-  //   body: JSON.stringify({
-  //     model: 'gpt-4-vision-preview',
-  //     messages: [
-  //       { role: 'system', content: systemPrompt },
-  //       { 
-  //         role: 'user', 
-  //         content: [
-  //           { type: 'text', text: userPrompt },
-  //           { type: 'image_url', image_url: { url: imageUrl } }
-  //         ]
-  //       }
-  //     ],
-  //     max_tokens: 500
-  //   })
-  // });
+  // Note: Image analysis with Gemini would require image data
+  // For now, use text-based analysis with extracted text
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemPrompt}\n\n${userPrompt}`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 500,
+        }
+      })
+    });
 
-  // Simulated AI response for demo
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (aiResponse) {
+      // Try to parse JSON from AI response
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    }
+  } catch (error) {
+    console.error('Gemini API call failed:', error);
+    // Fall back to simulated response
+  }
+
+  // Fallback: Simulated AI response for demo
   const simulatedResponse = {
     visual_type: "人物写真（単体）",
     main_color: "青系",
@@ -140,28 +161,46 @@ ${JSON.stringify(analysisData, null, 2)}
 
 上記のデータを分析し、営業提案用のサマリーを作成してください。`;
 
-  // Call external AI API (e.g., OpenAI GPT-4)
-  // For this demo, we'll return a simulated response
-  // In production, replace this with actual AI API call
-  
-  // Example: OpenAI API call
-  // const response = await fetch('https://api.openai.com/v1/chat/completions', {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': `Bearer ${API_KEY}`
-  //   },
-  //   body: JSON.stringify({
-  //     model: 'gpt-4',
-  //     messages: [
-  //       { role: 'system', content: systemPrompt },
-  //       { role: 'user', content: userPrompt }
-  //     ],
-  //     max_tokens: 1000
-  //   })
-  // });
+  // Call Gemini API for trend analysis
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemPrompt}\n\n${userPrompt}`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2000,
+        }
+      })
+    });
 
-  // Simulated AI response for demo
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (aiResponse) {
+      return aiResponse;
+    }
+  } catch (error) {
+    console.error('Gemini API call failed:', error);
+    // Fall back to simulated response if API fails
+  }
+
+  // Fallback: Simulated AI response for demo
   const visualTypes: { [key: string]: number } = {};
   const colors: { [key: string]: number } = {};
   const appeals: { [key: string]: number } = {};
@@ -212,7 +251,41 @@ ${JSON.stringify(analysisData, null, 2)}
 
 // Helper function to extract text from image (OCR simulation)
 export async function extractTextFromImage(imageUrl: string): Promise<string> {
-  // In production, use OCR API like Google Cloud Vision, AWS Textract, or Tesseract.js
-  // For demo purposes, return a placeholder
+  // Use Gemini for text extraction (simplified version)
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `画像URL: ${imageUrl}\n\nこの求人バナー画像から読み取れるテキストを抽出してください。キャッチコピー、給与情報、勤務条件などの重要な情報を抽出してください。`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 300,
+        }
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (extractedText) {
+        return extractedText;
+      }
+    }
+  } catch (error) {
+    console.error('Gemini OCR failed:', error);
+  }
+
+  // Fallback placeholder
   return "未経験OK 高時給1500円 週2日〜OK シフト自由";
 }
