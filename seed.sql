@@ -4,6 +4,7 @@
 -- ============================================
 
 -- 既存データをクリア（開発時のリセット用）
+DELETE FROM banner_sub_appeals;
 DELETE FROM banner_main_appeals;
 DELETE FROM banner_areas;
 DELETE FROM banner_knowledge;
@@ -100,13 +101,13 @@ INSERT INTO main_appeals (code, name, display_order) VALUES
 
 -- ============================================
 -- 4. ビジュアル種別辞書 (visual_types)
+-- スプレッドシートの「人あり無し」項目と連携
 -- ============================================
 INSERT INTO visual_types (code, name, display_order) VALUES
-('person_single', '人物写真（単体）', 1),
-('person_multiple', '人物写真（複数）', 2),
+('person_with', '人物あり', 1),
+('person_without', '人物なし', 2),
 ('illustration', 'イラスト', 3),
 ('text_only', 'テキストのみ', 4),
-('product_landscape', '商品・風景写真', 5),
 ('other', 'その他', 99);
 
 -- ============================================

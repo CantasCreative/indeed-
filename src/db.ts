@@ -45,14 +45,14 @@ export async function createBannerKnowledge(
 ): Promise<string> {
   const knowledgeId = generateId();
 
-  // Insert main record (Updated schema)
+  // Insert main record (Optimized for Spreadsheet Management)
   await db
     .prepare(`
       INSERT INTO banner_knowledge (
         knowledge_id, image_id, company_name, job_title, impressions,
-        clicks, ctr, employment_type, banner_image_key, banner_image_url, 
+        clicks, ctr, employment_type, banner_image_url, 
         visual_type, main_color, atmosphere, extracted_text, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       knowledgeId,
@@ -63,8 +63,7 @@ export async function createBannerKnowledge(
       data.clicks || 0,
       data.ctr || 0.0,
       data.employment_type || null,
-      bannerImageKey || null,
-      bannerImageUrl || null,
+      data.banner_image_url || bannerImageUrl || null,
       data.visual_type || null,
       data.main_color || null,
       data.atmosphere || null,
@@ -86,6 +85,16 @@ export async function createBannerKnowledge(
     for (const appealCode of data.main_appeals) {
       await db
         .prepare('INSERT INTO banner_main_appeals (knowledge_id, appeal_code) VALUES (?, ?)')
+        .bind(knowledgeId, appealCode)
+        .run();
+    }
+  }
+
+  // Insert sub appeals (many-to-many)
+  if (data.sub_appeals && data.sub_appeals.length > 0) {
+    for (const appealCode of data.sub_appeals) {
+      await db
+        .prepare('INSERT INTO banner_sub_appeals (knowledge_id, appeal_code) VALUES (?, ?)')
         .bind(knowledgeId, appealCode)
         .run();
     }
@@ -169,6 +178,13 @@ export async function searchBannerKnowledge(
       .bind(item.knowledge_id)
       .all();
     item.main_appeals = appealsResult.results.map((r: any) => r.appeal_code);
+
+    // Get sub appeals
+    const subAppealsResult = await db
+      .prepare('SELECT appeal_code FROM banner_sub_appeals WHERE knowledge_id = ?')
+      .bind(item.knowledge_id)
+      .all();
+    item.sub_appeals = subAppealsResult.results.map((r: any) => r.appeal_code);
   }
 
   return items;
@@ -204,6 +220,13 @@ export async function getBannerKnowledgeById(
     .bind(knowledgeId)
     .all();
   item.main_appeals = appealsResult.results.map((r: any) => r.appeal_code);
+
+  // Get sub appeals
+  const subAppealsResult = await db
+    .prepare('SELECT appeal_code FROM banner_sub_appeals WHERE knowledge_id = ?')
+    .bind(knowledgeId)
+    .all();
+  item.sub_appeals = subAppealsResult.results.map((r: any) => r.appeal_code);
 
   return item;
 }

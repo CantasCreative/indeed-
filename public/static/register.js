@@ -165,20 +165,21 @@ class BannerRegistrationForm {
             <!-- バナー画像セクション -->
             <div class="mb-8">
               <h3 class="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
-                バナー画像 <span class="text-red-500">*</span> <span class="text-blue-600 text-xs">(手動アップロード必須)</span>
+                バナー画像 <span class="text-red-500">*</span> <span class="text-blue-600 text-xs">(Googleドライブ画像URL)</span>
               </h3>
               
-              <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors">
-                <input type="file" id="bannerImage" accept="image/*" class="hidden" required>
-                <div id="dropZoneContent">
-                  <i class="fas fa-cloud-upload-alt text-5xl text-gray-400 mb-3"></i>
-                  <p class="text-gray-600 mb-2">バナー画像をドラッグ＆ドロップ</p>
-                  <p class="text-sm text-gray-400">または クリックしてファイルを選択</p>
-                </div>
-                <div id="imagePreview" class="hidden">
-                  <img id="previewImg" class="max-w-full max-h-64 mx-auto rounded">
-                  <p id="imageName" class="text-sm text-gray-600 mt-2"></p>
-                </div>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  画像URL <span class="text-red-500">*</span>
+                </label>
+                <input type="url" id="bannerImageUrl" required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="https://drive.google.com/...">
+                <p class="text-xs text-gray-500 mt-1">Googleドライブの共有リンクなどを入力してください</p>
+              </div>
+              
+              <div id="imagePreview" class="hidden border border-gray-200 rounded-lg p-4">
+                <img id="previewImg" class="max-w-full max-h-64 mx-auto rounded">
               </div>
             </div>
 
@@ -198,6 +199,18 @@ class BannerRegistrationForm {
                   ${this.dictionaries.mainAppeals.map(item => `
                     <label class="flex items-center py-1 hover:bg-gray-50 cursor-pointer">
                       <input type="checkbox" name="mainAppeals" value="${item.code}" class="mr-2">
+                      <span class="text-sm">${item.name}</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">サブ訴求（複数選択可）</label>
+                <div class="border border-gray-300 rounded-md p-3 max-h-48 overflow-y-auto">
+                  ${this.dictionaries.mainAppeals.map(item => `
+                    <label class="flex items-center py-1 hover:bg-gray-50 cursor-pointer">
+                      <input type="checkbox" name="subAppeals" value="${item.code}" class="mr-2">
                       <span class="text-sm">${item.name}</span>
                     </label>
                   `).join('')}
@@ -304,30 +317,23 @@ class BannerRegistrationForm {
       }
     });
 
-    // Image upload - drag & drop
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('bannerImage');
-
-    dropZone.addEventListener('click', () => fileInput.click());
-    dropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropZone.classList.add('border-blue-500', 'bg-blue-50');
-    });
-    dropZone.addEventListener('dragleave', () => {
-      dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-    });
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-      if (e.dataTransfer.files.length > 0) {
-        fileInput.files = e.dataTransfer.files;
-        this.handleImageUpload(e.dataTransfer.files[0]);
-      }
-    });
-
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) {
-        this.handleImageUpload(e.target.files[0]);
+    // Banner image URL preview
+    const bannerImageUrlInput = document.getElementById('bannerImageUrl');
+    bannerImageUrlInput.addEventListener('input', (e) => {
+      const url = e.target.value;
+      const imagePreview = document.getElementById('imagePreview');
+      const previewImg = document.getElementById('previewImg');
+      
+      if (url) {
+        previewImg.src = url;
+        previewImg.onerror = () => {
+          imagePreview.classList.add('hidden');
+        };
+        previewImg.onload = () => {
+          imagePreview.classList.remove('hidden');
+        };
+      } else {
+        imagePreview.classList.add('hidden');
       }
     });
 
@@ -562,9 +568,11 @@ class BannerRegistrationForm {
   async handleSubmit(e) {
     e.preventDefault();
 
-    // Validate required fields
-    if (!this.uploadedImageKey) {
-      alert('バナー画像をアップロードしてください（必須）');
+    // Validate required fields (Optimized for Spreadsheet Management)
+    const bannerImageUrl = document.getElementById('bannerImageUrl').value;
+    if (!bannerImageUrl) {
+      alert('バナー画像URLを入力してください（必須）');
+      document.getElementById('bannerImageUrl').focus();
       return;
     }
 
@@ -582,7 +590,7 @@ class BannerRegistrationForm {
       return;
     }
 
-    // Collect form data (Updated schema)
+    // Collect form data (Optimized for Spreadsheet Management)
     const data = {
       image_id: imageId,
       company_name: document.getElementById('companyName').value || undefined,
@@ -592,8 +600,10 @@ class BannerRegistrationForm {
       clicks: parseInt(document.getElementById('clicks').value) || 0,
       ctr: parseFloat(document.getElementById('ctr').value) || 0,
       employment_type: employmentType,
+      banner_image_url: bannerImageUrl,
       visual_type: document.getElementById('visualType').value || undefined,
       main_appeals: Array.from(document.querySelectorAll('input[name="mainAppeals"]:checked')).map(cb => cb.value),
+      sub_appeals: Array.from(document.querySelectorAll('input[name="subAppeals"]:checked')).map(cb => cb.value),
       main_color: document.getElementById('mainColor').value || undefined,
       atmosphere: document.getElementById('atmosphere').value || undefined,
       extracted_text: document.getElementById('extractedText').value || undefined,
@@ -607,10 +617,7 @@ class BannerRegistrationForm {
         alert('データを保存しました！');
         // Reset form
         document.getElementById('bannerForm').reset();
-        document.getElementById('dropZoneContent').classList.remove('hidden');
         document.getElementById('imagePreview').classList.add('hidden');
-        this.uploadedImageKey = null;
-        this.uploadedImageUrl = null;
       }
     } catch (error) {
       console.error('Save failed:', error);
