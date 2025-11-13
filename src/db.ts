@@ -230,3 +230,12 @@ export async function getBannerKnowledgeById(
 
   return item;
 }
+
+// Clear all banner knowledge data (for sheet sync)
+export async function clearAllBanners(db: D1Database): Promise<void> {
+  // Delete in order due to foreign key constraints
+  await db.prepare('DELETE FROM banner_sub_appeals').run();
+  await db.prepare('DELETE FROM banner_main_appeals').run();
+  await db.prepare('DELETE FROM banner_areas').run();
+  await db.prepare('DELETE FROM banner_knowledge').run();
+}

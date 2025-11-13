@@ -4,6 +4,7 @@ import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings } from './types';
 import * as db from './db';
 import * as ai from './ai';
+import * as sheets from './sheets';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -51,49 +52,50 @@ app.get('/api/dictionaries/atmospheres', async (c) => {
 // API Routes - Banner Knowledge
 // ============================================
 
-// Import CSV data (JobsCampaigns format)
-app.post('/api/banners/import-csv', async (c) => {
+// Sync data from Google Spreadsheet
+app.post('/api/banners/sync-from-sheet', async (c) => {
   try {
-    const { csv_data } = await c.req.json();
+    const { spreadsheet_id, api_key, sheet_name } = await c.req.json();
     
-    if (!csv_data || !Array.isArray(csv_data)) {
-      return c.json({ success: false, error: 'Invalid CSV data format' }, 400);
+    if (!spreadsheet_id || !api_key) {
+      return c.json({ success: false, error: 'スプレッドシートIDとAPIキーが必要です' }, 400);
+    }
+
+    // Fetch data from Google Sheets
+    const sheetRows = await sheets.fetchSheetData({
+      spreadsheet_id,
+      api_key,
+      sheet_name: sheet_name || 'Sheet1'
+    });
+
+    if (sheetRows.length === 0) {
+      return c.json({ success: false, error: 'スプレッドシートにデータがありません' }, 400);
     }
 
     // Get area dictionary for mapping
     const areas = await db.getAreas(c.env.DB);
     const areaMap = new Map(areas.map(a => [a.name, a.code]));
 
+    // Convert sheet data to banner format
+    const banners = sheets.convertSheetDataToBanners(sheetRows, areaMap);
+
+    // Clear existing data and insert new data
+    await db.clearAllBanners(c.env.DB);
+
     const imported = [];
     const errors = [];
 
-    for (const row of csv_data) {
+    for (const banner of banners) {
       try {
-        // Map CSV columns to BannerKnowledge fields
-        const data: any = {
-          image_id: row['参照番号'] || row['image_id'],
-          company_name: row['企業名'] || row['company_name'],
-          job_title: row['求人'] || row['job_title'],
-          impressions: parseInt(row['表示回数'] || row['impressions']) || 0,
-          clicks: parseInt(row['クリック数'] || row['clicks']) || 0,
-          ctr: parseFloat(row['クリック率（CTR）'] || row['ctr']) || 0,
-        };
-
-        // Map area name to code
-        const areaName = row['都道府県'] || row['area'];
-        if (areaName && areaMap.has(areaName)) {
-          data.area = areaMap.get(areaName);
-        }
-
-        // Validate required fields
-        if (!data.image_id) {
-          errors.push({ row, error: '参照番号が必要です' });
+        if (!banner.image_id) {
+          errors.push({ banner, error: '参照番号が必要です' });
           continue;
         }
 
-        imported.push(data);
+        const knowledgeId = await db.createBannerKnowledge(c.env.DB, banner);
+        imported.push({ ...banner, knowledge_id: knowledgeId });
       } catch (error: any) {
-        errors.push({ row, error: error.message });
+        errors.push({ banner, error: error.message });
       }
     }
 
@@ -101,21 +103,11 @@ app.post('/api/banners/import-csv', async (c) => {
       success: true, 
       imported_count: imported.length,
       error_count: errors.length,
-      imported_data: imported,
-      errors 
+      message: `${imported.length}件のバナーデータを同期しました`,
+      errors: errors.length > 0 ? errors : undefined
     });
   } catch (error: any) {
-    return c.json({ success: false, error: error.message }, 500);
-  }
-});
-
-// Create new banner knowledge
-app.post('/api/banners', async (c) => {
-  try {
-    const data = await c.req.json();
-    const knowledgeId = await db.createBannerKnowledge(c.env.DB, data);
-    return c.json({ success: true, knowledge_id: knowledgeId });
-  } catch (error: any) {
+    console.error('Sheet sync error:', error);
     return c.json({ success: false, error: error.message }, 500);
   }
 });
@@ -305,7 +297,7 @@ app.get('/dashboard', (c) => {
   `);
 });
 
-// Home page - navigation
+// Home page - Main Analytics Dashboard
 app.get('/', (c) => {
   return c.html(`
     <!DOCTYPE html>
@@ -317,67 +309,23 @@ app.get('/', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
-    <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-        <div class="container mx-auto px-4 py-16">
-            <div class="text-center mb-12">
-                <h1 class="text-4xl font-bold text-gray-800 mb-4">
-                    <i class="fas fa-chart-line text-blue-600 mr-3"></i>
-                    Indeedバナーナレッジ分析システム
-                </h1>
-                <p class="text-gray-600 text-lg">
-                    Indeed広告のバナー実績をAI分析で営業の差別化を実現
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                <!-- データ登録カード -->
-                <a href="/register" class="block">
-                    <div class="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow duration-300 border-t-4 border-blue-600">
-                        <div class="text-center">
-                            <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i class="fas fa-plus-circle text-4xl text-blue-600"></i>
-                            </div>
-                            <h2 class="text-2xl font-bold text-gray-800 mb-3">データ登録</h2>
-                            <p class="text-gray-600 mb-4">
-                                ATOMデータのインポート<br>
-                                バナー画像のアップロード<br>
-                                AIによるタグ提案
-                            </p>
-                            <span class="inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors">
-                                登録画面へ <i class="fas fa-arrow-right ml-2"></i>
-                            </span>
-                        </div>
-                    </div>
-                </a>
-
-                <!-- 検索・分析カード -->
-                <a href="/dashboard" class="block">
-                    <div class="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow duration-300 border-t-4 border-green-600">
-                        <div class="text-center">
-                            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i class="fas fa-search text-4xl text-green-600"></i>
-                            </div>
-                            <h2 class="text-2xl font-bold text-gray-800 mb-3">検索・分析</h2>
-                            <p class="text-gray-600 mb-4">
-                                条件別バナー検索<br>
-                                CTRトップ5表示<br>
-                                AIによる成功分析
-                            </p>
-                            <span class="inline-block bg-green-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-green-700 transition-colors">
-                                ダッシュボードへ <i class="fas fa-arrow-right ml-2"></i>
-                            </span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="mt-16 text-center text-gray-500 text-sm">
-                <p><i class="fas fa-database mr-2"></i>Cloudflare D1 + R2 | <i class="fas fa-robot mr-2"></i>AI統合準備完了</p>
-            </div>
-        </div>
+    <body>
+        <div id="app"></div>
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/index.js"></script>
     </body>
     </html>
   `);
+});
+
+// Old registration page (deprecated) - redirect to home
+app.get('/register', (c) => {
+  return c.redirect('/', 301);
+});
+
+// Old dashboard page (deprecated) - redirect to home
+app.get('/dashboard', (c) => {
+  return c.redirect('/', 301);
 });
 
 export default app;
