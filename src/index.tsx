@@ -127,6 +127,10 @@ app.post('/api/banners/sync-from-csv', async (c) => {
       return c.json({ success: false, error: 'CSVにデータがありません' }, 400);
     }
 
+    // Debug: Log CSV headers
+    console.log('CSV Headers:', Object.keys(sheetRows[0]));
+    console.log('First row sample:', sheetRows[0]);
+
     // Get area dictionary for mapping
     const areas = await db.getAreas(c.env.DB);
     const areaMap = new Map(areas.map(a => [a.name, a.code]));

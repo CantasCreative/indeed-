@@ -549,8 +549,8 @@ class BannerAnalyticsSystem {
     grid.innerHTML = this.filteredBanners.map(banner => `
       <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
         <div class="relative aspect-video bg-gray-100">
-          ${banner.image_url 
-            ? `<img src="${banner.image_url}" alt="参照番号: ${banner.image_id}" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2218%22 dy=%22.3em%22%3E画像読込エラー%3C/text%3E%3C/svg%3E'">` 
+          ${banner.banner_image_url 
+            ? `<img src="${banner.banner_image_url}" alt="参照番号: ${banner.image_id}" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2218%22 dy=%22.3em%22%3E画像読込エラー%3C/text%3E%3C/svg%3E'">` 
             : '<div class="w-full h-full flex items-center justify-center text-gray-400"><i class="fas fa-image text-4xl"></i><p class="mt-2">画像URLなし</p></div>'}
           ${banner.image_id ? `
             <div class="absolute top-2 left-2 bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
@@ -692,8 +692,8 @@ class BannerAnalyticsSystem {
                 バナー画像
               </h3>
               <div class="relative rounded-xl overflow-hidden shadow-lg bg-gray-100">
-                ${banner.image_url 
-                  ? `<img src="${banner.image_url}" alt="参照番号: ${banner.image_id}" class="w-full object-contain max-h-96">` 
+                ${banner.banner_image_url 
+                  ? `<img src="${banner.banner_image_url}" alt="参照番号: ${banner.image_id}" class="w-full object-contain max-h-96">` 
                   : '<div class="w-full h-64 flex items-center justify-center text-gray-400"><i class="fas fa-image text-6xl"></i></div>'}
               </div>
               ${banner.image_id ? `
