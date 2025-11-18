@@ -111,6 +111,62 @@ app.post('/api/banners/sync-from-sheet', async (c) => {
   }
 });
 
+// Sync data from CSV file upload (for confidential data)
+app.post('/api/banners/sync-from-csv', async (c) => {
+  try {
+    const { csv_text } = await c.req.json();
+    
+    if (!csv_text) {
+      return c.json({ success: false, error: 'CSVデータが必要です' }, 400);
+    }
+
+    // Parse CSV text
+    const sheetRows = sheets.fetchSheetDataFromCSV(csv_text);
+
+    if (sheetRows.length === 0) {
+      return c.json({ success: false, error: 'CSVにデータがありません' }, 400);
+    }
+
+    // Get area dictionary for mapping
+    const areas = await db.getAreas(c.env.DB);
+    const areaMap = new Map(areas.map(a => [a.name, a.code]));
+
+    // Convert sheet data to banner format
+    const banners = sheets.convertSheetDataToBanners(sheetRows, areaMap);
+
+    // Clear existing data and insert new data
+    await db.clearAllBanners(c.env.DB);
+
+    const imported = [];
+    const errors = [];
+
+    for (const banner of banners) {
+      try {
+        if (!banner.image_id) {
+          errors.push({ banner, error: '参照番号が必要です' });
+          continue;
+        }
+
+        const knowledgeId = await db.createBannerKnowledge(c.env.DB, banner);
+        imported.push({ ...banner, knowledge_id: knowledgeId });
+      } catch (error: any) {
+        errors.push({ banner, error: error.message });
+      }
+    }
+
+    return c.json({ 
+      success: true, 
+      imported_count: imported.length,
+      error_count: errors.length,
+      message: `${imported.length}件のバナーデータをインポートしました`,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error: any) {
+    console.error('CSV import error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 // Search banner knowledge
 app.post('/api/banners/search', async (c) => {
   try {

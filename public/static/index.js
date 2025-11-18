@@ -5,6 +5,7 @@ class BannerAnalyticsSystem {
     this.filteredBanners = [];
     this.dictionaries = {};
     this.sheetConfig = this.loadSheetConfig();
+    this.selectedCSVFile = null;
     this.init();
   }
 
@@ -201,10 +202,54 @@ class BannerAnalyticsSystem {
         <div id="configModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 p-8">
             <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-              <i class="fas fa-cog text-blue-600 mr-3"></i>
-              Googleスプレッドシート設定
+              <i class="fas fa-upload text-blue-600 mr-3"></i>
+              データインポート
             </h2>
-            <div class="space-y-4 mb-6">
+            
+            <!-- Tab Navigation -->
+            <div class="flex border-b border-gray-200 mb-6">
+              <button id="tabCSVUpload" class="tab-button active px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
+                <i class="fas fa-file-csv mr-2"></i>CSVアップロード（推奨）
+              </button>
+              <button id="tabWebPublish" class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                <i class="fas fa-globe mr-2"></i>ウェブ公開連携
+              </button>
+            </div>
+
+            <!-- CSV Upload Tab -->
+            <div id="csvUploadTab" class="space-y-4 mb-6">
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div class="flex items-start">
+                  <i class="fas fa-info-circle text-blue-600 mr-2 mt-1"></i>
+                  <div class="text-sm text-gray-700">
+                    <p class="font-semibold mb-1">機密情報も安全に扱えます</p>
+                    <p>スプレッドシートをCSV形式でエクスポートしてアップロードしてください。</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  CSVファイルを選択 <span class="text-red-500">*</span>
+                </label>
+                <div id="csvDropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors">
+                  <input type="file" id="csvFileInput" accept=".csv" class="hidden">
+                  <i class="fas fa-cloud-upload-alt text-5xl text-gray-400 mb-3"></i>
+                  <p class="text-gray-600 mb-2">CSVファイルをドラッグ＆ドロップ</p>
+                  <p class="text-sm text-gray-400">または クリックしてファイルを選択</p>
+                  <p id="csvFileName" class="text-sm text-green-600 mt-2 hidden"></p>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500">
+                <p class="font-semibold mb-1">エクスポート手順：</p>
+                <ol class="list-decimal ml-4 space-y-1">
+                  <li>スプレッドシートで「ファイル」→「ダウンロード」→「カンマ区切り形式(.csv)」</li>
+                  <li>ダウンロードしたCSVファイルをここにアップロード</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- Web Publish Tab -->
+            <div id="webPublishTab" class="space-y-4 mb-6 hidden">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   スプレッドシートID <span class="text-red-500">*</span>
@@ -227,21 +272,26 @@ class BannerAnalyticsSystem {
                 <div class="flex items-start">
                   <i class="fas fa-exclamation-triangle text-yellow-600 mr-2 mt-1"></i>
                   <div class="text-sm text-gray-700">
-                    <p class="font-semibold mb-1">重要：スプレッドシートを「ウェブに公開」してください</p>
+                    <p class="font-semibold mb-1">注意：スプレッドシートを「ウェブに公開」する必要があります</p>
                     <ol class="list-decimal ml-4 space-y-1">
                       <li>スプレッドシートで「ファイル」→「共有」→「ウェブに公開」をクリック</li>
                       <li>「リンク」タブで「公開」をクリック</li>
-                      <li>この設定をしないとデータ同期できません</li>
+                      <li>機密情報がある場合はCSVアップロードをご利用ください</li>
                     </ol>
                   </div>
                 </div>
               </div>
             </div>
+
             <div class="flex justify-end space-x-3">
               <button id="cancelConfigButton" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                 キャンセル
               </button>
-              <button id="saveConfigButton" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <button id="uploadCSVButton" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <i class="fas fa-upload mr-2"></i>
+                CSVをインポート
+              </button>
+              <button id="saveConfigButton" class="hidden px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                 <i class="fas fa-save mr-2"></i>
                 保存して同期
               </button>
@@ -268,8 +318,110 @@ class BannerAnalyticsSystem {
     document.getElementById('setupButton')?.addEventListener('click', () => this.showConfigModal());
     document.getElementById('saveConfigButton').addEventListener('click', () => this.saveAndSync());
     document.getElementById('cancelConfigButton').addEventListener('click', () => this.hideConfigModal());
+    document.getElementById('uploadCSVButton').addEventListener('click', () => this.uploadCSV());
     document.getElementById('applyFilters')?.addEventListener('click', () => this.applyFilters());
     document.getElementById('analyzeButton')?.addEventListener('click', () => this.runAIAnalysis());
+    
+    // Tab switching
+    document.getElementById('tabCSVUpload')?.addEventListener('click', () => this.switchTab('csv'));
+    document.getElementById('tabWebPublish')?.addEventListener('click', () => this.switchTab('web'));
+    
+    // CSV file drop zone
+    const csvDropZone = document.getElementById('csvDropZone');
+    const csvFileInput = document.getElementById('csvFileInput');
+    
+    csvDropZone?.addEventListener('click', () => csvFileInput.click());
+    csvDropZone?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      csvDropZone.classList.add('border-blue-500', 'bg-blue-50');
+    });
+    csvDropZone?.addEventListener('dragleave', () => {
+      csvDropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    });
+    csvDropZone?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      csvDropZone.classList.remove('border-blue-500', 'bg-blue-50');
+      if (e.dataTransfer.files.length > 0) {
+        this.handleCSVFile(e.dataTransfer.files[0]);
+      }
+    });
+    
+    csvFileInput?.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        this.handleCSVFile(e.target.files[0]);
+      }
+    });
+  }
+
+  switchTab(tab) {
+    const csvTab = document.getElementById('csvUploadTab');
+    const webTab = document.getElementById('webPublishTab');
+    const csvButton = document.getElementById('tabCSVUpload');
+    const webButton = document.getElementById('tabWebPublish');
+    const uploadButton = document.getElementById('uploadCSVButton');
+    const saveButton = document.getElementById('saveConfigButton');
+    
+    if (tab === 'csv') {
+      csvTab.classList.remove('hidden');
+      webTab.classList.add('hidden');
+      csvButton.classList.add('active', 'border-blue-600', 'text-blue-600');
+      csvButton.classList.remove('border-transparent', 'text-gray-500');
+      webButton.classList.remove('active', 'border-blue-600', 'text-blue-600');
+      webButton.classList.add('border-transparent', 'text-gray-500');
+      uploadButton.classList.remove('hidden');
+      saveButton.classList.add('hidden');
+    } else {
+      csvTab.classList.add('hidden');
+      webTab.classList.remove('hidden');
+      webButton.classList.add('active', 'border-blue-600', 'text-blue-600');
+      webButton.classList.remove('border-transparent', 'text-gray-500');
+      csvButton.classList.remove('active', 'border-blue-600', 'text-blue-600');
+      csvButton.classList.add('border-transparent', 'text-gray-500');
+      uploadButton.classList.add('hidden');
+      saveButton.classList.remove('hidden');
+    }
+  }
+
+  handleCSVFile(file) {
+    if (!file.name.endsWith('.csv')) {
+      alert('CSVファイルを選択してください');
+      return;
+    }
+    
+    this.selectedCSVFile = file;
+    document.getElementById('csvFileName').textContent = `✓ ${file.name}`;
+    document.getElementById('csvFileName').classList.remove('hidden');
+  }
+
+  async uploadCSV() {
+    if (!this.selectedCSVFile) {
+      alert('CSVファイルを選択してください');
+      return;
+    }
+
+    const uploadButton = document.getElementById('uploadCSVButton');
+    uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>インポート中...';
+    uploadButton.disabled = true;
+
+    try {
+      const csvText = await this.selectedCSVFile.text();
+      const response = await axios.post('/api/banners/sync-from-csv', { csv_text: csvText });
+      
+      if (response.data.success) {
+        alert(`✅ ${response.data.imported_count}件のバナーデータをインポートしました`);
+        this.hideConfigModal();
+        await this.loadBanners();
+        this.hideSetupGuide();
+      } else {
+        alert(`❌ インポートエラー: ${response.data.error}`);
+      }
+    } catch (error) {
+      console.error('CSV upload failed:', error);
+      alert('CSVのインポートに失敗しました');
+    } finally {
+      uploadButton.innerHTML = '<i class="fas fa-upload mr-2"></i>CSVをインポート';
+      uploadButton.disabled = false;
+    }
   }
 
   showConfigModal() {

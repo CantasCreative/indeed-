@@ -44,6 +44,18 @@ export async function fetchSheetData(config: SheetConfig): Promise<SheetRow[]> {
 }
 
 /**
+ * CSVテキストから直接データを取得（ファイルアップロード用）
+ * @param csvText CSV文字列
+ * @returns 行データの配列
+ */
+export function fetchSheetDataFromCSV(csvText: string): SheetRow[] {
+  if (!csvText || csvText.trim().length === 0) {
+    throw new Error('CSVデータが空です');
+  }
+  return parseCSV(csvText);
+}
+
+/**
  * CSV文字列をパースして行データの配列に変換
  * @param csvText CSV文字列
  * @returns 行データの配列
