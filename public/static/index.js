@@ -14,7 +14,7 @@ class BannerAnalyticsSystem {
     this.attachEventListeners();
     
     // スプレッドシート設定があれば自動同期
-    if (this.sheetConfig.spreadsheet_id && this.sheetConfig.api_key) {
+    if (this.sheetConfig.spreadsheet_id) {
       await this.syncFromSheet();
     } else {
       this.showSetupGuide();
@@ -216,20 +216,25 @@ class BannerAnalyticsSystem {
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Google Sheets API キー <span class="text-red-500">*</span>
+                  シートID（gid）- オプション
                 </label>
-                <input type="password" id="configApiKey" 
+                <input type="text" id="configGid" 
                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="AIza...">
-                <p class="text-xs text-gray-500 mt-1">Google Cloud Consoleで取得したAPIキー</p>
+                  placeholder="0" value="0">
+                <p class="text-xs text-gray-500 mt-1">URLの「#gid=」の後の数字（通常は0）</p>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  シート名（オプション）
-                </label>
-                <input type="text" id="configSheetName" 
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Sheet1" value="Sheet1">
+              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="flex items-start">
+                  <i class="fas fa-exclamation-triangle text-yellow-600 mr-2 mt-1"></i>
+                  <div class="text-sm text-gray-700">
+                    <p class="font-semibold mb-1">重要：スプレッドシートを「ウェブに公開」してください</p>
+                    <ol class="list-decimal ml-4 space-y-1">
+                      <li>スプレッドシートで「ファイル」→「共有」→「ウェブに公開」をクリック</li>
+                      <li>「リンク」タブで「公開」をクリック</li>
+                      <li>この設定をしないとデータ同期できません</li>
+                    </ol>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="flex justify-end space-x-3">
@@ -275,11 +280,8 @@ class BannerAnalyticsSystem {
     if (this.sheetConfig.spreadsheet_id) {
       document.getElementById('configSpreadsheetId').value = this.sheetConfig.spreadsheet_id;
     }
-    if (this.sheetConfig.api_key) {
-      document.getElementById('configApiKey').value = this.sheetConfig.api_key;
-    }
-    if (this.sheetConfig.sheet_name) {
-      document.getElementById('configSheetName').value = this.sheetConfig.sheet_name;
+    if (this.sheetConfig.gid) {
+      document.getElementById('configGid').value = this.sheetConfig.gid;
     }
   }
 
@@ -289,21 +291,20 @@ class BannerAnalyticsSystem {
 
   async saveAndSync() {
     const spreadsheet_id = document.getElementById('configSpreadsheetId').value.trim();
-    const api_key = document.getElementById('configApiKey').value.trim();
-    const sheet_name = document.getElementById('configSheetName').value.trim() || 'Sheet1';
+    const gid = document.getElementById('configGid').value.trim() || '0';
 
-    if (!spreadsheet_id || !api_key) {
-      alert('スプレッドシートIDとAPIキーを入力してください');
+    if (!spreadsheet_id) {
+      alert('スプレッドシートIDを入力してください');
       return;
     }
 
-    this.saveSheetConfig({ spreadsheet_id, api_key, sheet_name });
+    this.saveSheetConfig({ spreadsheet_id, gid });
     this.hideConfigModal();
     await this.syncFromSheet();
   }
 
   async syncFromSheet() {
-    if (!this.sheetConfig.spreadsheet_id || !this.sheetConfig.api_key) {
+    if (!this.sheetConfig.spreadsheet_id) {
       alert('スプレッドシート設定が不完全です');
       return;
     }

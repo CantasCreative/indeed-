@@ -52,24 +52,23 @@ app.get('/api/dictionaries/atmospheres', async (c) => {
 // API Routes - Banner Knowledge
 // ============================================
 
-// Sync data from Google Spreadsheet
+// Sync data from Google Spreadsheet (CSV public URL)
 app.post('/api/banners/sync-from-sheet', async (c) => {
   try {
-    const { spreadsheet_id, api_key, sheet_name } = await c.req.json();
+    const { spreadsheet_id, gid } = await c.req.json();
     
-    if (!spreadsheet_id || !api_key) {
-      return c.json({ success: false, error: 'スプレッドシートIDとAPIキーが必要です' }, 400);
+    if (!spreadsheet_id) {
+      return c.json({ success: false, error: 'スプレッドシートIDが必要です' }, 400);
     }
 
-    // Fetch data from Google Sheets
+    // Fetch data from Google Sheets (CSV export)
     const sheetRows = await sheets.fetchSheetData({
       spreadsheet_id,
-      api_key,
-      sheet_name: sheet_name || 'Sheet1'
+      gid: gid || '0'
     });
 
     if (sheetRows.length === 0) {
-      return c.json({ success: false, error: 'スプレッドシートにデータがありません' }, 400);
+      return c.json({ success: false, error: 'スプレッドシートにデータがありません。スプレッドシートを「ウェブに公開」していることを確認してください。' }, 400);
     }
 
     // Get area dictionary for mapping

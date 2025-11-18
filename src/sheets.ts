@@ -1,10 +1,9 @@
 // Google Sheets Integration
-// Google Sheets API v4を使用してスプレッドシートデータを取得
+// CSV公開URLを使用してスプレッドシートデータを取得
 
 export interface SheetConfig {
   spreadsheet_id: string;
-  api_key: string;
-  sheet_name?: string;
+  gid?: string; // シートのgid（オプション）
 }
 
 export interface SheetRow {
@@ -12,52 +11,105 @@ export interface SheetRow {
 }
 
 /**
- * Googleスプレッドシートからデータを取得
+ * Googleスプレッドシート（CSV公開URL）からデータを取得
  * @param config スプレッドシート設定
  * @returns 行データの配列
  */
 export async function fetchSheetData(config: SheetConfig): Promise<SheetRow[]> {
-  const { spreadsheet_id, api_key, sheet_name = 'Sheet1' } = config;
+  const { spreadsheet_id, gid = '0' } = config;
   
-  // Google Sheets API v4エンドポイント
-  const range = encodeURIComponent(`${sheet_name}!A:Z`);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet_id}/values/${range}?key=${api_key}`;
+  // CSV公開URL
+  // スプレッドシートを「ウェブに公開」する必要があります
+  const url = `https://docs.google.com/spreadsheets/d/${spreadsheet_id}/export?format=csv&gid=${gid}`;
 
   try {
     const response = await fetch(url);
     
     if (!response.ok) {
-      throw new Error(`Google Sheets API error: ${response.status} ${response.statusText}`);
+      throw new Error(`スプレッドシートの取得に失敗しました: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const csvText = await response.text();
     
-    if (!data.values || data.values.length === 0) {
-      return [];
+    if (!csvText || csvText.trim().length === 0) {
+      throw new Error('スプレッドシートが空です');
     }
 
-    // 1行目をヘッダーとして使用
-    const headers = data.values[0];
-    const rows: SheetRow[] = [];
-
-    // 2行目以降をデータとして処理
-    for (let i = 1; i < data.values.length; i++) {
-      const row: SheetRow = {};
-      const values = data.values[i];
-
-      headers.forEach((header: string, index: number) => {
-        const value = values[index] || '';
-        row[header] = value;
-      });
-
-      rows.push(row);
-    }
-
-    return rows;
+    // CSVをパース
+    return parseCSV(csvText);
   } catch (error) {
     console.error('Failed to fetch sheet data:', error);
     throw error;
   }
+}
+
+/**
+ * CSV文字列をパースして行データの配列に変換
+ * @param csvText CSV文字列
+ * @returns 行データの配列
+ */
+function parseCSV(csvText: string): SheetRow[] {
+  const lines = csvText.split('\n').filter(line => line.trim());
+  
+  if (lines.length < 2) {
+    return [];
+  }
+
+  // 1行目をヘッダーとして解析
+  const headers = parseCSVLine(lines[0]);
+  const rows: SheetRow[] = [];
+
+  // 2行目以降をデータとして処理
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i]);
+    const row: SheetRow = {};
+
+    headers.forEach((header, index) => {
+      row[header] = values[index] || '';
+    });
+
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+/**
+ * CSV行をパースして値の配列に変換（カンマ区切り、ダブルクォート対応）
+ * @param line CSV行
+ * @returns 値の配列
+ */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // エスケープされたダブルクォート
+        current += '"';
+        i++; // 次の文字をスキップ
+      } else {
+        // クォートの開始/終了
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // フィールドの区切り
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  // 最後のフィールドを追加
+  result.push(current.trim());
+
+  return result;
 }
 
 /**
