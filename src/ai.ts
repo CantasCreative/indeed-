@@ -249,6 +249,130 @@ ${JSON.stringify(analysisData, null, 2)}
   return simulatedResponse;
 }
 
+// AI Function 3: Analyze single banner effectiveness
+export async function analyzeSingleBanner(banner: any): Promise<string> {
+  const systemPrompt = `# あなたの役割
+あなたは優秀な広告クリエイティブアナリスト兼マーケティングコンサルタントです。
+
+# タスク
+提供されたバナーデータを詳細に分析し、このバナーがなぜ効果的なのか（または改善すべき点）を明確に説明してください。
+
+# 分析の観点
+1. **ビジュアル要素の効果**: 画像、色、雰囲気がターゲット層にどう作用するか
+2. **訴求メッセージの強み**: メインアピール、サブアピールの選択とその効果
+3. **ターゲット層とのマッチング**: エリア設定や訴求内容がターゲットに適しているか
+4. **改善提案**: さらに効果を高めるための具体的な提案
+
+# 出力フォーマット
+## バナー効果分析レポート
+
+### 📊 基本情報
+- 参照番号: {image_id}
+- 対象エリア: {areas}
+- メインアピール: {main_appeals}
+
+### ✨ 効果的なポイント
+
+**1. ビジュアル戦略**
+（分析内容）
+
+**2. 訴求メッセージ**
+（分析内容）
+
+**3. ターゲティング**
+（分析内容）
+
+### 💡 改善提案
+
+（具体的な改善案）`;
+
+  const mainAppeals = banner.main_appeals?.join('、') || 'なし';
+  const subAppeals = banner.sub_appeals?.join('、') || 'なし';
+  const areas = banner.areas?.join('、') || 'なし';
+  
+  const userPrompt = `# 分析対象バナーデータ
+
+- **参照番号**: ${banner.image_id || '未設定'}
+- **画像URL**: ${banner.image_url || 'なし'}
+- **メインアピール**: ${mainAppeals}
+- **サブアピール**: ${subAppeals}
+- **対象エリア**: ${areas}
+- **備考**: ${banner.notes || 'なし'}
+
+上記のバナーを分析し、効果分析レポートを作成してください。`;
+
+  // Call Gemini API for single banner analysis
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemPrompt}\n\n${userPrompt}`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2000,
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (aiResponse) {
+      return aiResponse;
+    }
+  } catch (error) {
+    console.error('Gemini API call failed:', error);
+    // Fall back to simulated response if API fails
+  }
+
+  // Fallback: Simulated analysis
+  const simulatedResponse = `## バナー効果分析レポート
+
+### 📊 基本情報
+- **参照番号**: ${banner.image_id || '未設定'}
+- **対象エリア**: ${areas}
+- **メインアピール**: ${mainAppeals}
+- **サブアピール**: ${subAppeals}
+
+### ✨ 効果的なポイント
+
+**1. ビジュアル戦略**
+${banner.image_url ? 'バナー画像が設定されており、視覚的な訴求が可能です。画像の質と訴求内容の一致が重要です。' : '画像が設定されていないため、視覚的インパクトの観点で改善の余地があります。'}
+
+**2. 訴求メッセージ**
+${mainAppeals !== 'なし' ? `「${mainAppeals}」という明確な訴求ポイントを打ち出しており、ターゲット層のニーズに直接アプローチできています。特に求職者が重視する条件を前面に出すことで、クリック率の向上が期待できます。` : 'メインアピールが設定されていないため、訴求力の強化が必要です。'}
+
+${subAppeals !== 'なし' ? `サブアピールとして「${subAppeals}」を追加することで、より詳細な魅力を伝え、応募意欲を高める効果があります。` : ''}
+
+**3. ターゲティング**
+${areas !== 'なし' ? `「${areas}」を対象エリアとして設定しており、地域に特化した訴求が可能です。地域密着型の求人広告として効果的です。` : 'エリアが未設定のため、ターゲティングの精度向上が推奨されます。'}
+
+### 💡 改善提案
+
+1. **ビジュアルの最適化**: ${banner.image_url ? '画像の訴求内容とテキストメッセージの整合性を確認し、よりインパクトのある構成を検討してください。' : '魅力的なバナー画像を追加することで、視認性とクリック率が大幅に向上します。'}
+
+2. **訴求の強化**: ${mainAppeals !== 'なし' ? '現在の訴求に加えて、給与レンジや勤務時間などの具体的な数字を含めることで、さらに説得力が増します。' : 'ターゲット層が最も関心を持つ条件（給与、勤務時間、福利厚生など）を明確に打ち出してください。'}
+
+3. **A/Bテスト実施**: 異なるビジュアルや訴求メッセージのバリエーションを作成し、A/Bテストを通じて最も効果的なパターンを特定することを推奨します。`;
+
+  return simulatedResponse;
+}
+
 // Helper function to extract text from image (OCR simulation)
 export async function extractTextFromImage(imageUrl: string): Promise<string> {
   // Use Gemini for text extraction (simplified version)

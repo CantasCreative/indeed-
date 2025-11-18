@@ -188,7 +188,7 @@ app.get('/api/banners/:id', async (c) => {
       return c.json({ success: false, error: 'Not found' }, 404);
     }
     
-    return c.json({ success: true, item });
+    return c.json(item);
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
   }
@@ -281,6 +281,31 @@ app.post('/api/ai/analyze-trends', async (c) => {
 
     // Call AI service for trend analysis
     const analysis = await ai.analyzeBannerTrends(search_conditions, top_results);
+    
+    return c.json({ success: true, analysis });
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// AI Function 3: Analyze single banner effectiveness
+app.post('/api/ai/analyze-banner', async (c) => {
+  try {
+    const { knowledge_id } = await c.req.json();
+    
+    if (!knowledge_id) {
+      return c.json({ success: false, error: 'knowledge_id is required' }, 400);
+    }
+
+    // Get banner data
+    const banner = await db.getBannerKnowledgeById(c.env.DB, knowledge_id);
+    
+    if (!banner) {
+      return c.json({ success: false, error: 'Banner not found' }, 404);
+    }
+
+    // Call AI service for single banner analysis
+    const analysis = await ai.analyzeSingleBanner(banner);
     
     return c.json({ success: true, analysis });
   } catch (error: any) {

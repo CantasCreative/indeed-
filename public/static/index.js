@@ -549,28 +549,59 @@ class BannerAnalyticsSystem {
     grid.innerHTML = this.filteredBanners.map(banner => `
       <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
         <div class="relative aspect-video bg-gray-100">
-          ${banner.banner_image_url 
-            ? `<img src="${banner.banner_image_url}" alt="${banner.job_title || 'バナー'}" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2218%22 dy=%22.3em%22%3E画像なし%3C/text%3E%3C/svg%3E'">` 
-            : '<div class="w-full h-full flex items-center justify-center text-gray-400"><i class="fas fa-image text-4xl"></i></div>'}
-          <div class="absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-            CTR ${(banner.ctr || 0).toFixed(2)}%
-          </div>
-        </div>
-        <div class="p-4">
-          <h4 class="font-bold text-gray-900 mb-1 truncate">${banner.company_name || '企業名なし'}</h4>
-          <p class="text-sm text-gray-600 mb-3 truncate">${banner.job_title || '職種名なし'}</p>
-          <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
-            <span><i class="fas fa-eye mr-1"></i>${(banner.impressions || 0).toLocaleString()}</span>
-            <span><i class="fas fa-mouse-pointer mr-1"></i>${(banner.clicks || 0).toLocaleString()}</span>
-          </div>
-          ${banner.main_appeals && banner.main_appeals.length > 0 ? `
-            <div class="flex flex-wrap gap-1 mt-2">
-              ${banner.main_appeals.slice(0, 2).map(appeal => {
-                const appealObj = this.dictionaries.mainAppeals.find(a => a.code === appeal);
-                return appealObj ? `<span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">${appealObj.name}</span>` : '';
-              }).join('')}
+          ${banner.image_url 
+            ? `<img src="${banner.image_url}" alt="参照番号: ${banner.image_id}" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2218%22 dy=%22.3em%22%3E画像読込エラー%3C/text%3E%3C/svg%3E'">` 
+            : '<div class="w-full h-full flex items-center justify-center text-gray-400"><i class="fas fa-image text-4xl"></i><p class="mt-2">画像URLなし</p></div>'}
+          ${banner.image_id ? `
+            <div class="absolute top-2 left-2 bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+              #${banner.image_id}
             </div>
           ` : ''}
+        </div>
+        <div class="p-4">
+          <h4 class="font-bold text-gray-900 mb-1">${banner.image_id ? `参照番号: ${banner.image_id}` : '参照番号なし'}</h4>
+          <p class="text-sm text-gray-600 mb-2">${banner.notes || '備考なし'}</p>
+          
+          ${banner.main_appeals && banner.main_appeals.length > 0 ? `
+            <div class="mb-2">
+              <p class="text-xs text-gray-500 mb-1">メインアピール:</p>
+              <div class="flex flex-wrap gap-1">
+                ${banner.main_appeals.slice(0, 3).map(appeal => {
+                  const appealObj = this.dictionaries.mainAppeals.find(a => a.code === appeal);
+                  return appealObj ? `<span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">${appealObj.name}</span>` : '';
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+          
+          ${banner.sub_appeals && banner.sub_appeals.length > 0 ? `
+            <div class="mb-2">
+              <p class="text-xs text-gray-500 mb-1">サブアピール:</p>
+              <div class="flex flex-wrap gap-1">
+                ${banner.sub_appeals.slice(0, 2).map(appeal => `
+                  <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded">${appeal}</span>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+          
+          ${banner.areas && banner.areas.length > 0 ? `
+            <div class="mb-3">
+              <p class="text-xs text-gray-500 mb-1">エリア:</p>
+              <div class="flex flex-wrap gap-1">
+                ${banner.areas.slice(0, 3).map(area => {
+                  const areaObj = this.dictionaries.areas.find(a => a.code === area);
+                  return areaObj ? `<span class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded">${areaObj.name}</span>` : '';
+                }).join('')}
+                ${banner.areas.length > 3 ? `<span class="text-xs text-gray-500">+${banner.areas.length - 3}</span>` : ''}
+              </div>
+            </div>
+          ` : ''}
+          
+          <button onclick="bannerSystem.showBannerDetail(${banner.knowledge_id})" 
+            class="w-full mt-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg">
+            <i class="fas fa-chart-line mr-2"></i>効果詳細を見る
+          </button>
         </div>
       </div>
     `).join('');
@@ -623,9 +654,170 @@ class BannerAnalyticsSystem {
       .replace(/\n\n/g, '</div><div class="mt-2">')
       .replace(/\n/g, '<br>');
   }
+
+  async showBannerDetail(knowledgeId) {
+    try {
+      // Get banner details
+      const response = await axios.get(`/api/banners/${knowledgeId}`);
+      
+      if (!response.data) {
+        alert('バナー情報の取得に失敗しました');
+        return;
+      }
+
+      const banner = response.data;
+      
+      // Create modal
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+      modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
+            <div class="flex items-center justify-between">
+              <h2 class="text-2xl font-bold flex items-center">
+                <i class="fas fa-chart-line mr-3"></i>
+                効果詳細分析
+              </h2>
+              <button onclick="this.closest('.fixed').remove()" class="text-white hover:text-gray-200 text-2xl">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="p-6">
+            <!-- Banner Image -->
+            <div class="mb-6">
+              <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                <i class="fas fa-image mr-2 text-blue-600"></i>
+                バナー画像
+              </h3>
+              <div class="relative rounded-xl overflow-hidden shadow-lg bg-gray-100">
+                ${banner.image_url 
+                  ? `<img src="${banner.image_url}" alt="参照番号: ${banner.image_id}" class="w-full object-contain max-h-96">` 
+                  : '<div class="w-full h-64 flex items-center justify-center text-gray-400"><i class="fas fa-image text-6xl"></i></div>'}
+              </div>
+              ${banner.image_id ? `
+                <p class="mt-2 text-sm text-gray-600">
+                  <strong>参照番号:</strong> ${banner.image_id}
+                </p>
+              ` : ''}
+            </div>
+
+            <!-- Basic Info -->
+            <div class="mb-6">
+              <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                <i class="fas fa-info-circle mr-2 text-blue-600"></i>
+                基本情報
+              </h3>
+              <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+                ${banner.notes ? `<p class="text-sm"><strong>備考:</strong> ${banner.notes}</p>` : ''}
+              </div>
+            </div>
+
+            <!-- Main Appeals -->
+            ${banner.main_appeals && banner.main_appeals.length > 0 ? `
+              <div class="mb-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                  <i class="fas fa-bullhorn mr-2 text-blue-600"></i>
+                  メインアピール
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                  ${banner.main_appeals.map(appeal => {
+                    const appealObj = this.dictionaries.mainAppeals.find(a => a.code === appeal);
+                    return appealObj ? `<span class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium">${appealObj.name}</span>` : '';
+                  }).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Sub Appeals -->
+            ${banner.sub_appeals && banner.sub_appeals.length > 0 ? `
+              <div class="mb-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                  <i class="fas fa-list-ul mr-2 text-green-600"></i>
+                  サブアピール
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                  ${banner.sub_appeals.map(appeal => `
+                    <span class="bg-green-100 text-green-700 px-4 py-2 rounded-lg">${appeal}</span>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Areas -->
+            ${banner.areas && banner.areas.length > 0 ? `
+              <div class="mb-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                  <i class="fas fa-map-marker-alt mr-2 text-orange-600"></i>
+                  対象エリア
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                  ${banner.areas.map(area => {
+                    const areaObj = this.dictionaries.areas.find(a => a.code === area);
+                    return areaObj ? `<span class="bg-orange-100 text-orange-700 px-4 py-2 rounded-lg">${areaObj.name}</span>` : '';
+                  }).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- AI Analysis Button -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+              <button onclick="bannerSystem.analyzeSingleBanner(${knowledgeId})" 
+                class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl font-bold text-lg">
+                <i class="fas fa-brain mr-2"></i>
+                このバナーをAI分析
+              </button>
+              <div id="singleAnalysisResult_${knowledgeId}" class="mt-4 hidden">
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+                  <div id="singleAnalysisContent_${knowledgeId}" class="prose max-w-none"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Close on outside click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
+    } catch (error) {
+      console.error('Failed to show banner detail:', error);
+      alert('バナー詳細の表示に失敗しました');
+    }
+  }
+
+  async analyzeSingleBanner(knowledgeId) {
+    const resultDiv = document.getElementById(`singleAnalysisResult_${knowledgeId}`);
+    const contentDiv = document.getElementById(`singleAnalysisContent_${knowledgeId}`);
+    
+    resultDiv.classList.remove('hidden');
+    contentDiv.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin text-3xl text-purple-600"></i><p class="mt-2 text-gray-600">AI分析中...</p></div>';
+
+    try {
+      const response = await axios.post('/api/ai/analyze-banner', {
+        knowledge_id: knowledgeId
+      });
+
+      if (response.data.success) {
+        contentDiv.innerHTML = this.formatAnalysisResult(response.data.analysis);
+      } else {
+        contentDiv.innerHTML = '<p class="text-red-600">分析に失敗しました</p>';
+      }
+    } catch (error) {
+      console.error('Single banner analysis failed:', error);
+      contentDiv.innerHTML = '<p class="text-red-600">AI分析エラーが発生しました</p>';
+    }
+  }
 }
 
 // Initialize
+let bannerSystem;
 document.addEventListener('DOMContentLoaded', () => {
-  new BannerAnalyticsSystem();
+  bannerSystem = new BannerAnalyticsSystem();
 });
