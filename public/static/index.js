@@ -86,6 +86,17 @@ class BannerAnalyticsSystem {
         mainAppealSelect.appendChild(option);
       });
     }
+
+    // Populate sub appeal filter (サブ訴求) - uses same dictionary as main appeals
+    const subAppealSelect = document.getElementById('filterSubAppeal');
+    if (subAppealSelect && this.dictionaries.mainAppeals) {
+      this.dictionaries.mainAppeals.forEach(ma => {
+        const option = document.createElement('option');
+        option.value = ma.code;
+        option.textContent = ma.name;
+        subAppealSelect.appendChild(option);
+      });
+    }
   }
 
   render() {
@@ -172,7 +183,7 @@ class BannerAnalyticsSystem {
               <i class="fas fa-filter mr-2 text-blue-600"></i>
               フィルター
             </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-9 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">企業名</label>
                 <input type="text" id="filterCompany" placeholder="企業名で検索" 
@@ -204,6 +215,12 @@ class BannerAnalyticsSystem {
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">メイン訴求</label>
                 <select id="filterMainAppeal" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">すべて</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">サブ訴求</label>
+                <select id="filterSubAppeal" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                   <option value="">すべて</option>
                 </select>
               </div>
@@ -481,6 +498,7 @@ class BannerAnalyticsSystem {
     const areaFilter = document.getElementById('filterArea').value;
     const visualTypeFilter = document.getElementById('filterVisualType').value;
     const mainAppealFilter = document.getElementById('filterMainAppeal').value;
+    const subAppealFilter = document.getElementById('filterSubAppeal').value;
     const sortOrder = document.getElementById('filterSort').value;
 
     this.filteredBanners = this.banners.filter(banner => {
@@ -494,7 +512,11 @@ class BannerAnalyticsSystem {
       const matchMainAppeal = !mainAppealFilter || 
         (banner.main_appeals && banner.main_appeals.some(appeal => appeal === mainAppealFilter));
       
-      return matchCompany && matchJob && matchEmploymentType && matchArea && matchVisualType && matchMainAppeal;
+      // Check if banner has the selected sub appeal
+      const matchSubAppeal = !subAppealFilter || 
+        (banner.sub_appeals && banner.sub_appeals.some(appeal => appeal === subAppealFilter));
+      
+      return matchCompany && matchJob && matchEmploymentType && matchArea && matchVisualType && matchMainAppeal && matchSubAppeal;
     });
 
     // Sort
