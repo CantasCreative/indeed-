@@ -8,20 +8,21 @@
   ],
   
   // D1 Database - Indeedバナーナレッジ分析システム
-  // 注意: database_idは後で wrangler d1 create コマンドで取得して設定する
+  // 注意: database_idは後でCloudflare PagesのダッシュボードまたはCLIで設定する
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "webapp-production",
       "database_id": "00000000-0000-0000-0000-000000000000"
     }
-  ],
-  
-  // R2 Bucket - バナー画像保存用
-  "r2_buckets": [
-    {
-      "binding": "BANNER_BUCKET",
-      "bucket_name": "webapp-banners"
-    }
   ]
+  
+  // R2 Bucket - 現在未使用（画像アップロード機能は今後実装予定）
+  // 必要になったら追加:
+  // "r2_buckets": [
+  //   {
+  //     "binding": "BANNER_BUCKET",
+  //     "bucket_name": "webapp-banners"
+  //   }
+  // ]
 }
