@@ -11,6 +11,7 @@ class BannerAnalyticsSystem {
   async init() {
     await this.loadDictionaries();
     this.render();
+    this.populateFilterDropdowns();
     this.attachEventListeners();
     
     // バナーデータを読み込む
@@ -38,6 +39,30 @@ class BannerAnalyticsSystem {
       };
     } catch (error) {
       console.error('Failed to load dictionaries:', error);
+    }
+  }
+
+  populateFilterDropdowns() {
+    // Populate visual type filter (人物の有無)
+    const visualTypeSelect = document.getElementById('filterVisualType');
+    if (visualTypeSelect && this.dictionaries.visualTypes) {
+      this.dictionaries.visualTypes.forEach(vt => {
+        const option = document.createElement('option');
+        option.value = vt.code;
+        option.textContent = vt.name;
+        visualTypeSelect.appendChild(option);
+      });
+    }
+
+    // Populate main appeal filter (メイン訴求)
+    const mainAppealSelect = document.getElementById('filterMainAppeal');
+    if (mainAppealSelect && this.dictionaries.mainAppeals) {
+      this.dictionaries.mainAppeals.forEach(ma => {
+        const option = document.createElement('option');
+        option.value = ma.code;
+        option.textContent = ma.name;
+        mainAppealSelect.appendChild(option);
+      });
     }
   }
 
@@ -125,7 +150,7 @@ class BannerAnalyticsSystem {
               <i class="fas fa-filter mr-2 text-blue-600"></i>
               フィルター
             </h3>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">企業名</label>
                 <input type="text" id="filterCompany" placeholder="企業名で検索" 
@@ -135,6 +160,18 @@ class BannerAnalyticsSystem {
                 <label class="block text-sm font-medium text-gray-700 mb-2">求人</label>
                 <input type="text" id="filterJob" placeholder="職種名で検索" 
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">人物の有無</label>
+                <select id="filterVisualType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">すべて</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">メイン訴求</label>
+                <select id="filterMainAppeal" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">すべて</option>
+                </select>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">CTR順</label>
@@ -406,12 +443,20 @@ class BannerAnalyticsSystem {
   applyFilters() {
     const companyFilter = document.getElementById('filterCompany').value.toLowerCase();
     const jobFilter = document.getElementById('filterJob').value.toLowerCase();
+    const visualTypeFilter = document.getElementById('filterVisualType').value;
+    const mainAppealFilter = document.getElementById('filterMainAppeal').value;
     const sortOrder = document.getElementById('filterSort').value;
 
     this.filteredBanners = this.banners.filter(banner => {
       const matchCompany = !companyFilter || (banner.company_name || '').toLowerCase().includes(companyFilter);
       const matchJob = !jobFilter || (banner.job_title || '').toLowerCase().includes(jobFilter);
-      return matchCompany && matchJob;
+      const matchVisualType = !visualTypeFilter || banner.visual_type === visualTypeFilter;
+      
+      // Check if banner has the selected main appeal
+      const matchMainAppeal = !mainAppealFilter || 
+        (banner.main_appeals && banner.main_appeals.some(appeal => appeal.code === mainAppealFilter));
+      
+      return matchCompany && matchJob && matchVisualType && matchMainAppeal;
     });
 
     // Sort
