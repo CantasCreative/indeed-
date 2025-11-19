@@ -550,7 +550,7 @@ class BannerAnalyticsSystem {
       <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
         <div class="relative aspect-video bg-gray-100">
           ${banner.banner_image_url 
-            ? `<img src="/api/proxy-image?url=${encodeURIComponent(banner.banner_image_url)}" alt="${banner.job_title || 'バナー'}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22 dy=%22.3em%22%3E画像を読み込めません%3C/text%3E%3C/svg%3E';">` 
+            ? `<img src="${banner.banner_image_url}" alt="${banner.job_title || 'バナー'}" class="w-full h-full object-cover" referrerpolicy="no-referrer" crossorigin="anonymous" loading="lazy" onerror="console.error('Image load failed:', this.src); this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22400%22 height=%22300%22/%3E%3Ctext x=%2250%25%22 y=%2240%25%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2216%22 font-weight=%22600%22%3E画像を読み込めません%3C/text%3E%3Ctext x=%2250%25%22 y=%2260%25%22 text-anchor=%22middle%22 fill=%22%236b7280%22 font-size=%2212%22%3EGoogle Driveの共有設定を%3C/text%3E%3Ctext x=%2250%25%22 y=%2270%25%22 text-anchor=%22middle%22 fill=%22%236b7280%22 font-size=%2212%22%3E確認してください%3C/text%3E%3C/svg%3E';">` 
             : '<div class="w-full h-full flex items-center justify-center text-gray-400"><i class="fas fa-image text-4xl"></i><p class="mt-2 text-sm">画像URLなし</p></div>'}
           ${banner.ctr ? `
             <div class="absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
@@ -604,7 +604,7 @@ class BannerAnalyticsSystem {
             </div>
           ` : ''}
           
-          <button onclick="bannerSystem.showBannerDetail(${banner.knowledge_id})" 
+          <button onclick="bannerSystem.showBannerDetail('${banner.knowledge_id}')" 
             class="w-full mt-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg">
             <i class="fas fa-chart-line mr-2"></i>効果詳細を見る
           </button>
@@ -699,7 +699,7 @@ class BannerAnalyticsSystem {
               </h3>
               <div class="relative rounded-xl overflow-hidden shadow-lg bg-gray-100">
                 ${banner.banner_image_url 
-                  ? `<img src="/api/proxy-image?url=${encodeURIComponent(banner.banner_image_url)}" alt="${banner.job_title || 'バナー'}" class="w-full object-contain max-h-96">` 
+                  ? `<img src="${banner.banner_image_url}" alt="${banner.job_title || 'バナー'}" class="w-full object-contain max-h-96" referrerpolicy="no-referrer" crossorigin="anonymous" loading="lazy">` 
                   : '<div class="w-full h-64 flex items-center justify-center text-gray-400"><i class="fas fa-image text-6xl"></i></div>'}
               </div>
               ${banner.image_id ? `
@@ -775,14 +775,14 @@ class BannerAnalyticsSystem {
 
             <!-- AI Analysis Button -->
             <div class="mt-8 pt-6 border-t border-gray-200">
-              <button onclick="bannerSystem.analyzeSingleBanner(${knowledgeId})" 
+              <button onclick="bannerSystem.analyzeSingleBanner('${knowledgeId}')" 
                 class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl font-bold text-lg">
                 <i class="fas fa-brain mr-2"></i>
                 このバナーをAI分析
               </button>
-              <div id="singleAnalysisResult_${knowledgeId}" class="mt-4 hidden">
+              <div id="singleAnalysisResult_${knowledgeId.replace(/[^a-zA-Z0-9]/g, '_')}" class="mt-4 hidden">
                 <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
-                  <div id="singleAnalysisContent_${knowledgeId}" class="prose max-w-none"></div>
+                  <div id="singleAnalysisContent_${knowledgeId.replace(/[^a-zA-Z0-9]/g, '_')}" class="prose max-w-none"></div>
                 </div>
               </div>
             </div>
@@ -805,8 +805,14 @@ class BannerAnalyticsSystem {
   }
 
   async analyzeSingleBanner(knowledgeId) {
-    const resultDiv = document.getElementById(`singleAnalysisResult_${knowledgeId}`);
-    const contentDiv = document.getElementById(`singleAnalysisContent_${knowledgeId}`);
+    const sanitizedId = knowledgeId.replace(/[^a-zA-Z0-9]/g, '_');
+    const resultDiv = document.getElementById(`singleAnalysisResult_${sanitizedId}`);
+    const contentDiv = document.getElementById(`singleAnalysisContent_${sanitizedId}`);
+    
+    if (!resultDiv || !contentDiv) {
+      console.error('Analysis result elements not found');
+      return;
+    }
     
     resultDiv.classList.remove('hidden');
     contentDiv.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin text-3xl text-purple-600"></i><p class="mt-2 text-gray-600">AI分析中...</p></div>';
