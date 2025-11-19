@@ -264,6 +264,36 @@ app.get('/api/images/*', async (c) => {
   }
 });
 
+// Proxy external images (for Google Drive, etc.) to avoid CORS issues
+app.get('/api/proxy-image', async (c) => {
+  try {
+    const imageUrl = c.req.query('url');
+    
+    if (!imageUrl) {
+      return c.json({ success: false, error: 'URL parameter is required' }, 400);
+    }
+
+    // Fetch the image from external URL
+    const response = await fetch(imageUrl);
+    
+    if (!response.ok) {
+      return c.json({ success: false, error: 'Failed to fetch image' }, response.status);
+    }
+
+    // Return the image with proper headers to avoid CORS
+    return new Response(response.body, {
+      headers: {
+        'Content-Type': response.headers.get('Content-Type') || 'image/jpeg',
+        'Cache-Control': 'public, max-age=86400', // Cache for 1 day
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  } catch (error: any) {
+    console.error('Image proxy error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 // ============================================
 // API Routes - AI Functions
 // ============================================

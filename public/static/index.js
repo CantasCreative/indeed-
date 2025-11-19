@@ -550,17 +550,23 @@ class BannerAnalyticsSystem {
       <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
         <div class="relative aspect-video bg-gray-100">
           ${banner.banner_image_url 
-            ? `<img src="${banner.banner_image_url}" alt="参照番号: ${banner.image_id}" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2218%22 dy=%22.3em%22%3E画像読込エラー%3C/text%3E%3C/svg%3E'">` 
-            : '<div class="w-full h-full flex items-center justify-center text-gray-400"><i class="fas fa-image text-4xl"></i><p class="mt-2">画像URLなし</p></div>'}
-          ${banner.image_id ? `
-            <div class="absolute top-2 left-2 bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-              #${banner.image_id}
+            ? `<img src="/api/proxy-image?url=${encodeURIComponent(banner.banner_image_url)}" alt="${banner.job_title || 'バナー'}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22 dy=%22.3em%22%3E画像を読み込めません%3C/text%3E%3C/svg%3E';">` 
+            : '<div class="w-full h-full flex items-center justify-center text-gray-400"><i class="fas fa-image text-4xl"></i><p class="mt-2 text-sm">画像URLなし</p></div>'}
+          ${banner.ctr ? `
+            <div class="absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+              CTR ${banner.ctr}%
             </div>
           ` : ''}
         </div>
         <div class="p-4">
-          <h4 class="font-bold text-gray-900 mb-1">${banner.image_id ? `参照番号: ${banner.image_id}` : '参照番号なし'}</h4>
-          <p class="text-sm text-gray-600 mb-2">${banner.notes || '備考なし'}</p>
+          <h4 class="font-bold text-gray-900 mb-1 truncate">${banner.company_name || '企業名なし'}</h4>
+          <p class="text-sm text-gray-600 mb-2 truncate">${banner.job_title || '職種名なし'}</p>
+          
+          <div class="flex items-center justify-between text-xs text-gray-500 mb-3 pb-3 border-b">
+            <span><i class="fas fa-eye mr-1"></i>${(banner.impressions || 0).toLocaleString()}</span>
+            <span><i class="fas fa-mouse-pointer mr-1"></i>${(banner.clicks || 0).toLocaleString()}</span>
+            ${banner.employment_type ? `<span class="bg-gray-100 px-2 py-1 rounded">${banner.employment_type}</span>` : ''}
+          </div>
           
           ${banner.main_appeals && banner.main_appeals.length > 0 ? `
             <div class="mb-2">
@@ -693,7 +699,7 @@ class BannerAnalyticsSystem {
               </h3>
               <div class="relative rounded-xl overflow-hidden shadow-lg bg-gray-100">
                 ${banner.banner_image_url 
-                  ? `<img src="${banner.banner_image_url}" alt="参照番号: ${banner.image_id}" class="w-full object-contain max-h-96">` 
+                  ? `<img src="/api/proxy-image?url=${encodeURIComponent(banner.banner_image_url)}" alt="${banner.job_title || 'バナー'}" class="w-full object-contain max-h-96">` 
                   : '<div class="w-full h-64 flex items-center justify-center text-gray-400"><i class="fas fa-image text-6xl"></i></div>'}
               </div>
               ${banner.image_id ? `
@@ -710,6 +716,12 @@ class BannerAnalyticsSystem {
                 基本情報
               </h3>
               <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+                ${banner.company_name ? `<p class="text-sm"><strong>企業名:</strong> ${banner.company_name}</p>` : ''}
+                ${banner.job_title ? `<p class="text-sm"><strong>求人:</strong> ${banner.job_title}</p>` : ''}
+                ${banner.employment_type ? `<p class="text-sm"><strong>雇用形態:</strong> ${banner.employment_type}</p>` : ''}
+                ${banner.impressions !== undefined ? `<p class="text-sm"><strong>表示回数:</strong> ${banner.impressions.toLocaleString()}</p>` : ''}
+                ${banner.clicks !== undefined ? `<p class="text-sm"><strong>クリック数:</strong> ${banner.clicks.toLocaleString()}</p>` : ''}
+                ${banner.ctr !== undefined ? `<p class="text-sm"><strong>クリック率:</strong> ${banner.ctr}%</p>` : ''}
                 ${banner.notes ? `<p class="text-sm"><strong>備考:</strong> ${banner.notes}</p>` : ''}
               </div>
             </div>
