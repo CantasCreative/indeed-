@@ -141,8 +141,16 @@ app.post('/api/banners/sync-from-csv', async (c) => {
     const areas = await db.getAreas(c.env.DB);
     const areaMap = new Map(areas.map(a => [a.name, a.code]));
 
+    // Get employment type dictionary for mapping
+    const employmentTypes = await db.getEmploymentTypes(c.env.DB);
+    const employmentTypeMap = new Map(employmentTypes.map(et => [et.name, et.code]));
+
+    // Get main appeals dictionary for mapping
+    const mainAppeals = await db.getMainAppeals(c.env.DB);
+    const mainAppealsMap = new Map(mainAppeals.map(ma => [ma.name, ma.code]));
+
     // Convert sheet data to banner format
-    const banners = sheets.convertSheetDataToBanners(sheetRows, areaMap);
+    const banners = sheets.convertSheetDataToBanners(sheetRows, areaMap, employmentTypeMap, mainAppealsMap);
 
     // Migrate images from external storage (Google Drive, Dropbox) to R2
     const migrationResults = {

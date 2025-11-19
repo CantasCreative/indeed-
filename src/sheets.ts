@@ -191,11 +191,15 @@ export function isExternalStorageUrl(url: string): boolean {
  * スプレッドシートデータをBannerKnowledgeフォーマットに変換
  * @param sheetRows スプレッドシート行データ
  * @param areaMap エリアコードマッピング
+ * @param employmentTypeMap 雇用形態コードマッピング（オプション）
+ * @param mainAppealsMap メイン訴求コードマッピング（オプション）
  * @returns BannerKnowledgeデータ
  */
 export function convertSheetDataToBanners(
   sheetRows: SheetRow[],
-  areaMap: Map<string, string>
+  areaMap: Map<string, string>,
+  employmentTypeMap?: Map<string, string>,
+  mainAppealsMap?: Map<string, string>
 ): any[] {
   return sheetRows.map(row => {
     // 必須フィールドのチェック
@@ -225,20 +229,42 @@ export function convertSheetDataToBanners(
     let mainAppeals: string[] = [];
     const mainAppealStr = row['メイン訴求'] || row['main_appeal'];
     if (mainAppealStr && typeof mainAppealStr === 'string' && mainAppealStr.trim()) {
-      mainAppeals = mainAppealStr.split(',').map(s => s.trim()).filter(Boolean);
+      const appealNames = mainAppealStr.split(',').map(s => s.trim()).filter(Boolean);
+      // マッピングがある場合は名前→codeに変換、ない場合はフリーテキストのまま
+      if (mainAppealsMap) {
+        mainAppeals = appealNames.map(name => mainAppealsMap.get(name) || name);
+      } else {
+        mainAppeals = appealNames;
+      }
     }
 
     // サブ訴求の配列化（カンマ区切りの場合）
     let subAppeals: string[] = [];
     const subAppealStr = row['サブ訴求'] || row['sub_appeal'];
     if (subAppealStr && typeof subAppealStr === 'string' && subAppealStr.trim()) {
-      subAppeals = subAppealStr.split(',').map(s => s.trim()).filter(Boolean);
+      const appealNames = subAppealStr.split(',').map(s => s.trim()).filter(Boolean);
+      // マッピングがある場合は名前→codeに変換、ない場合はフリーテキストのまま
+      if (mainAppealsMap) {
+        subAppeals = appealNames.map(name => mainAppealsMap.get(name) || name);
+      } else {
+        subAppeals = appealNames;
+      }
     }
 
     // 画像URLの処理（Google Drive URLを直接表示用に変換）
     let imageUrl = row['画像のURL'] || row['画像URL'] || row['バナー画像URL'] || undefined;
     if (imageUrl) {
       imageUrl = convertToDirectImageUrl(imageUrl);
+    }
+
+    // 雇用形態コードの変換（名前→codeへのマッピング）
+    let employmentType = row['雇用形態'] || undefined;
+    if (employmentType && employmentTypeMap) {
+      const employmentTypeName = String(employmentType).trim();
+      const mappedCode = employmentTypeMap.get(employmentTypeName);
+      if (mappedCode) {
+        employmentType = mappedCode;
+      }
     }
 
     return {
@@ -249,7 +275,7 @@ export function convertSheetDataToBanners(
       impressions: Math.round(impressions),
       clicks: Math.round(clicks),
       ctr: parseFloat(ctr.toFixed(2)),
-      employment_type: row['雇用形態'] || undefined,
+      employment_type: employmentType,
       banner_image_url: imageUrl,
       visual_type: row['人ありなし'] || row['人あり無し'] || row['ビジュアル種別'] || undefined,
       main_appeals: mainAppeals,
