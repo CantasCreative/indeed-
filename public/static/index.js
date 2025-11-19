@@ -43,6 +43,28 @@ class BannerAnalyticsSystem {
   }
 
   populateFilterDropdowns() {
+    // Populate employment type filter (雇用形態)
+    const employmentTypeSelect = document.getElementById('filterEmploymentType');
+    if (employmentTypeSelect && this.dictionaries.employmentTypes) {
+      this.dictionaries.employmentTypes.forEach(et => {
+        const option = document.createElement('option');
+        option.value = et.code;
+        option.textContent = et.name;
+        employmentTypeSelect.appendChild(option);
+      });
+    }
+
+    // Populate area filter (エリア)
+    const areaSelect = document.getElementById('filterArea');
+    if (areaSelect && this.dictionaries.areas) {
+      this.dictionaries.areas.forEach(area => {
+        const option = document.createElement('option');
+        option.value = area.code;
+        option.textContent = area.name;
+        areaSelect.appendChild(option);
+      });
+    }
+
     // Populate visual type filter (人物の有無)
     const visualTypeSelect = document.getElementById('filterVisualType');
     if (visualTypeSelect && this.dictionaries.visualTypes) {
@@ -150,7 +172,7 @@ class BannerAnalyticsSystem {
               <i class="fas fa-filter mr-2 text-blue-600"></i>
               フィルター
             </h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">企業名</label>
                 <input type="text" id="filterCompany" placeholder="企業名で検索" 
@@ -160,6 +182,18 @@ class BannerAnalyticsSystem {
                 <label class="block text-sm font-medium text-gray-700 mb-2">求人</label>
                 <input type="text" id="filterJob" placeholder="職種名で検索" 
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">雇用形態</label>
+                <select id="filterEmploymentType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">すべて</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">エリア</label>
+                <select id="filterArea" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">すべて</option>
+                </select>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">人物の有無</label>
@@ -443,6 +477,8 @@ class BannerAnalyticsSystem {
   applyFilters() {
     const companyFilter = document.getElementById('filterCompany').value.toLowerCase();
     const jobFilter = document.getElementById('filterJob').value.toLowerCase();
+    const employmentTypeFilter = document.getElementById('filterEmploymentType').value;
+    const areaFilter = document.getElementById('filterArea').value;
     const visualTypeFilter = document.getElementById('filterVisualType').value;
     const mainAppealFilter = document.getElementById('filterMainAppeal').value;
     const sortOrder = document.getElementById('filterSort').value;
@@ -450,13 +486,15 @@ class BannerAnalyticsSystem {
     this.filteredBanners = this.banners.filter(banner => {
       const matchCompany = !companyFilter || (banner.company_name || '').toLowerCase().includes(companyFilter);
       const matchJob = !jobFilter || (banner.job_title || '').toLowerCase().includes(jobFilter);
+      const matchEmploymentType = !employmentTypeFilter || banner.employment_type === employmentTypeFilter;
+      const matchArea = !areaFilter || (banner.areas && banner.areas.includes(areaFilter));
       const matchVisualType = !visualTypeFilter || banner.visual_type === visualTypeFilter;
       
       // Check if banner has the selected main appeal
       const matchMainAppeal = !mainAppealFilter || 
-        (banner.main_appeals && banner.main_appeals.some(appeal => appeal.code === mainAppealFilter));
+        (banner.main_appeals && banner.main_appeals.some(appeal => appeal === mainAppealFilter));
       
-      return matchCompany && matchJob && matchVisualType && matchMainAppeal;
+      return matchCompany && matchJob && matchEmploymentType && matchArea && matchVisualType && matchMainAppeal;
     });
 
     // Sort
@@ -503,28 +541,41 @@ class BannerAnalyticsSystem {
           <div class="flex items-center justify-between text-xs text-gray-500 mb-3 pb-3 border-b">
             <span><i class="fas fa-eye mr-1"></i>${(banner.impressions || 0).toLocaleString()}</span>
             <span><i class="fas fa-mouse-pointer mr-1"></i>${(banner.clicks || 0).toLocaleString()}</span>
-            ${banner.employment_type ? `<span class="bg-gray-100 px-2 py-1 rounded">${banner.employment_type}</span>` : ''}
           </div>
+          
+          ${banner.employment_type ? (() => {
+            const empTypeObj = this.dictionaries.employmentTypes.find(et => et.code === banner.employment_type);
+            return empTypeObj ? `
+              <div class="mb-2">
+                <span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded font-semibold">
+                  <i class="fas fa-briefcase mr-1"></i>${empTypeObj.name}
+                </span>
+              </div>
+            ` : '';
+          })() : ''}
           
           ${banner.main_appeals && banner.main_appeals.length > 0 ? `
             <div class="mb-2">
-              <p class="text-xs text-gray-500 mb-1">メインアピール:</p>
+              <p class="text-xs text-gray-500 mb-1"><i class="fas fa-star mr-1"></i>メイン訴求:</p>
               <div class="flex flex-wrap gap-1">
                 ${banner.main_appeals.slice(0, 3).map(appeal => {
                   const appealObj = this.dictionaries.mainAppeals.find(a => a.code === appeal);
                   return appealObj ? `<span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">${appealObj.name}</span>` : '';
                 }).join('')}
+                ${banner.main_appeals.length > 3 ? `<span class="text-xs text-gray-500">+${banner.main_appeals.length - 3}</span>` : ''}
               </div>
             </div>
           ` : ''}
           
           ${banner.sub_appeals && banner.sub_appeals.length > 0 ? `
             <div class="mb-2">
-              <p class="text-xs text-gray-500 mb-1">サブアピール:</p>
+              <p class="text-xs text-gray-500 mb-1"><i class="fas fa-tags mr-1"></i>サブ訴求:</p>
               <div class="flex flex-wrap gap-1">
-                ${banner.sub_appeals.slice(0, 2).map(appeal => `
-                  <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded">${appeal}</span>
-                `).join('')}
+                ${banner.sub_appeals.slice(0, 3).map(appeal => {
+                  const appealObj = this.dictionaries.mainAppeals.find(a => a.code === appeal);
+                  return appealObj ? `<span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded">${appealObj.name}</span>` : `<span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded">${appeal}</span>`;
+                }).join('')}
+                ${banner.sub_appeals.length > 3 ? `<span class="text-xs text-gray-500">+${banner.sub_appeals.length - 3}</span>` : ''}
               </div>
             </div>
           ` : ''}
