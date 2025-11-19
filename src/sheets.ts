@@ -125,6 +125,44 @@ function parseCSVLine(line: string): string[] {
 }
 
 /**
+ * 画像URLを直接表示可能な形式に変換
+ * Google Drive URLの場合は埋め込み可能なURLに変換
+ * @param url 元のURL
+ * @returns 直接表示可能なURL
+ */
+function convertToDirectImageUrl(url: string): string {
+  if (!url || typeof url !== 'string') {
+    return url;
+  }
+
+  const trimmedUrl = url.trim();
+
+  // Google Drive URLのパターン1: /file/d/{FILE_ID}/view
+  const drivePattern1 = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+  const match1 = trimmedUrl.match(drivePattern1);
+  if (match1) {
+    const fileId = match1[1];
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+
+  // Google Drive URLのパターン2: /open?id={FILE_ID}
+  const drivePattern2 = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
+  const match2 = trimmedUrl.match(drivePattern2);
+  if (match2) {
+    const fileId = match2[1];
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+
+  // Dropbox URLの変換（dl=0 を dl=1 に変更）
+  if (trimmedUrl.includes('dropbox.com')) {
+    return trimmedUrl.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+  }
+
+  // その他のURLはそのまま返す
+  return trimmedUrl;
+}
+
+/**
  * スプレッドシートデータをBannerKnowledgeフォーマットに変換
  * @param sheetRows スプレッドシート行データ
  * @param areaMap エリアコードマッピング
@@ -172,6 +210,12 @@ export function convertSheetDataToBanners(
       subAppeals = subAppealStr.split(',').map(s => s.trim()).filter(Boolean);
     }
 
+    // 画像URLの処理（Google Drive URLを直接表示用に変換）
+    let imageUrl = row['画像のURL'] || row['画像URL'] || row['バナー画像URL'] || undefined;
+    if (imageUrl) {
+      imageUrl = convertToDirectImageUrl(imageUrl);
+    }
+
     return {
       image_id: String(row['参照番号']),
       company_name: row['企業名'] || undefined,
@@ -181,7 +225,7 @@ export function convertSheetDataToBanners(
       clicks: Math.round(clicks),
       ctr: parseFloat(ctr.toFixed(2)),
       employment_type: row['雇用形態'] || undefined,
-      banner_image_url: row['画像のURL'] || row['画像URL'] || row['バナー画像URL'] || undefined,
+      banner_image_url: imageUrl,
       visual_type: row['人ありなし'] || row['人あり無し'] || row['ビジュアル種別'] || undefined,
       main_appeals: mainAppeals,
       sub_appeals: subAppeals,
