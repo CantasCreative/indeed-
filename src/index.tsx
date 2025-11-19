@@ -305,6 +305,23 @@ app.patch('/api/banners/:id/image', async (c) => {
   }
 });
 
+// Delete banner by ID
+app.delete('/api/banners/:id', async (c) => {
+  try {
+    const knowledgeId = c.req.param('id');
+    const deleted = await db.deleteBannerKnowledge(c.env.DB, knowledgeId);
+    
+    if (!deleted) {
+      return c.json({ success: false, error: 'Banner not found' }, 404);
+    }
+
+    return c.json({ success: true, message: 'Banner deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete banner error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 // Upload banner image to R2
 app.post('/api/upload', async (c) => {
   try {

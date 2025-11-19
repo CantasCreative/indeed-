@@ -769,8 +769,8 @@ class BannerAnalyticsSystem {
               </div>
             ` : ''}
 
-            <!-- AI Analysis Button -->
-            <div class="mt-8 pt-6 border-t border-gray-200">
+            <!-- Action Buttons -->
+            <div class="mt-8 pt-6 border-t border-gray-200 space-y-4">
               <button onclick="bannerSystem.analyzeSingleBanner('${knowledgeId}')" 
                 class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl font-bold text-lg">
                 <i class="fas fa-brain mr-2"></i>
@@ -781,6 +781,12 @@ class BannerAnalyticsSystem {
                   <div id="singleAnalysisContent_${knowledgeId.replace(/[^a-zA-Z0-9]/g, '_')}" class="prose max-w-none"></div>
                 </div>
               </div>
+              
+              <button onclick="bannerSystem.deleteBanner('${knowledgeId}')" 
+                class="w-full bg-red-600 text-white px-6 py-3 rounded-xl hover:bg-red-700 transition-all duration-300 shadow-md hover:shadow-lg font-semibold">
+                <i class="fas fa-trash-alt mr-2"></i>
+                このバナーを削除
+              </button>
             </div>
           </div>
         </div>
@@ -1106,6 +1112,37 @@ class BannerAnalyticsSystem {
     } catch (error) {
       console.error('Single banner analysis failed:', error);
       contentDiv.innerHTML = '<p class="text-red-600">AI分析エラーが発生しました</p>';
+    }
+  }
+
+  async deleteBanner(knowledgeId) {
+    // 確認ダイアログを表示
+    const confirmed = confirm('本当にこのバナーを削除しますか？\n\nこの操作は取り消せません。');
+    
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`/api/banners/${knowledgeId}`);
+
+      if (response.data.success) {
+        alert('✅ バナーを削除しました');
+        
+        // モーダルを閉じる
+        const modal = document.querySelector('.fixed.inset-0');
+        if (modal) {
+          modal.remove();
+        }
+        
+        // バナーリストを再読み込み
+        await this.loadBanners();
+      } else {
+        alert(`❌ 削除に失敗しました: ${response.data.error}`);
+      }
+    } catch (error) {
+      console.error('Delete banner failed:', error);
+      alert('❌ バナーの削除中にエラーが発生しました');
     }
   }
 }

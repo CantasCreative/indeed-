@@ -353,6 +353,26 @@ export async function upsertBannerKnowledge(
   }
 }
 
+// Delete a single banner by ID
+export async function deleteBannerKnowledge(
+  db: D1Database,
+  knowledgeId: string
+): Promise<boolean> {
+  // Check if banner exists
+  const existing = await getBannerKnowledgeById(db, knowledgeId);
+  if (!existing) {
+    return false;
+  }
+
+  // Delete in order due to foreign key constraints
+  await db.prepare('DELETE FROM banner_sub_appeals WHERE knowledge_id = ?').bind(knowledgeId).run();
+  await db.prepare('DELETE FROM banner_main_appeals WHERE knowledge_id = ?').bind(knowledgeId).run();
+  await db.prepare('DELETE FROM banner_areas WHERE knowledge_id = ?').bind(knowledgeId).run();
+  await db.prepare('DELETE FROM banner_knowledge WHERE knowledge_id = ?').bind(knowledgeId).run();
+
+  return true;
+}
+
 // Clear all banner knowledge data (for sheet sync)
 export async function clearAllBanners(db: D1Database): Promise<void> {
   // Delete in order due to foreign key constraints
