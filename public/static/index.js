@@ -15,11 +15,6 @@ class BannerAnalyticsSystem {
     
     // バナーデータを読み込む
     await this.loadBanners();
-    
-    // データがなければセットアップガイドを表示
-    if (this.banners.length === 0) {
-      this.showSetupGuide();
-    }
   }
 
   async loadDictionaries() {
@@ -85,7 +80,7 @@ class BannerAnalyticsSystem {
           </div>
 
           <!-- Stats Overview -->
-          <div id="statsSection" class="hidden mb-8 grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div id="statsSection" class="mb-8 grid grid-cols-1 md:grid-cols-4 gap-6">
             <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
               <div class="flex items-center justify-between">
                 <div>
@@ -125,7 +120,7 @@ class BannerAnalyticsSystem {
           </div>
 
           <!-- Filters -->
-          <div id="filtersSection" class="hidden mb-8 bg-white rounded-xl shadow-md p-6">
+          <div id="filtersSection" class="mb-8 bg-white rounded-xl shadow-md p-6">
             <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
               <i class="fas fa-filter mr-2 text-blue-600"></i>
               フィルター
@@ -159,7 +154,7 @@ class BannerAnalyticsSystem {
           </div>
 
           <!-- Banner Gallery -->
-          <div id="gallerySection" class="hidden mb-8">
+          <div id="gallerySection" class="mb-8">
             <div class="flex items-center justify-between mb-6">
               <h3 class="text-xl font-bold text-gray-800 flex items-center">
                 <i class="fas fa-th text-blue-600 mr-2"></i>
@@ -258,9 +253,6 @@ class BannerAnalyticsSystem {
 
   hideSetupGuide() {
     document.getElementById('setupGuide').classList.add('hidden');
-    document.getElementById('statsSection').classList.remove('hidden');
-    document.getElementById('filtersSection').classList.remove('hidden');
-    document.getElementById('gallerySection').classList.remove('hidden');
   }
 
   attachEventListeners() {
