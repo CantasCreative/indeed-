@@ -81,21 +81,23 @@ export async function createBannerKnowledge(
   }
 
   // Insert main appeals (many-to-many)
+  // Note: With PRAGMA foreign_keys = OFF, we can insert free text from CSV
   if (data.main_appeals && data.main_appeals.length > 0) {
-    for (const appealCode of data.main_appeals) {
+    for (const appealText of data.main_appeals) {
       await db
         .prepare('INSERT INTO banner_main_appeals (knowledge_id, appeal_code) VALUES (?, ?)')
-        .bind(knowledgeId, appealCode)
+        .bind(knowledgeId, appealText)
         .run();
     }
   }
 
   // Insert sub appeals (many-to-many)
+  // Note: With PRAGMA foreign_keys = OFF, we can insert free text from CSV
   if (data.sub_appeals && data.sub_appeals.length > 0) {
-    for (const appealCode of data.sub_appeals) {
+    for (const appealText of data.sub_appeals) {
       await db
         .prepare('INSERT INTO banner_sub_appeals (knowledge_id, appeal_code) VALUES (?, ?)')
-        .bind(knowledgeId, appealCode)
+        .bind(knowledgeId, appealText)
         .run();
     }
   }

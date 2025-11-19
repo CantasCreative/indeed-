@@ -81,6 +81,9 @@ app.post('/api/banners/sync-from-sheet', async (c) => {
     // Clear existing data and insert new data
     await db.clearAllBanners(c.env.DB);
 
+    // Disable foreign key constraints temporarily to allow free text in appeals
+    await c.env.DB.prepare('PRAGMA foreign_keys = OFF').run();
+
     const imported = [];
     const errors = [];
 
@@ -97,6 +100,9 @@ app.post('/api/banners/sync-from-sheet', async (c) => {
         errors.push({ banner, error: error.message });
       }
     }
+
+    // Re-enable foreign key constraints
+    await c.env.DB.prepare('PRAGMA foreign_keys = ON').run();
 
     return c.json({ 
       success: true, 
@@ -141,6 +147,9 @@ app.post('/api/banners/sync-from-csv', async (c) => {
     // Clear existing data and insert new data
     await db.clearAllBanners(c.env.DB);
 
+    // Disable foreign key constraints temporarily to allow free text in appeals
+    await c.env.DB.prepare('PRAGMA foreign_keys = OFF').run();
+
     const imported = [];
     const errors = [];
 
@@ -157,6 +166,9 @@ app.post('/api/banners/sync-from-csv', async (c) => {
         errors.push({ banner, error: error.message });
       }
     }
+
+    // Re-enable foreign key constraints
+    await c.env.DB.prepare('PRAGMA foreign_keys = ON').run();
 
     return c.json({ 
       success: true, 
