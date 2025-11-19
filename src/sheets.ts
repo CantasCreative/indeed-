@@ -142,31 +142,33 @@ export function convertSheetDataToBanners(
 
     // エリアコードの変換
     const areaName = row['都道府県'] || row['エリア'];
-    const areaCode = areaName ? areaMap.get(String(areaName)) : undefined;
+    const areaCode = areaName ? areaMap.get(String(areaName).trim()) : undefined;
 
     // CTRの計算（表示回数とクリック数から）
-    const impressions = parseFloat(String(row['表示回数'] || 0));
-    const clicks = parseFloat(String(row['クリック数'] || 0));
-    let ctr = parseFloat(String(row['クリック率（CTR）'] || row['CTR'] || 0));
+    const impressions = parseFloat(String(row['表示回数'] || 0).replace(/,/g, ''));
+    const clicks = parseFloat(String(row['クリック数'] || 0).replace(/,/g, ''));
     
-    // CTRが%表記の場合は数値に変換
-    if (ctr > 100) {
-      ctr = ctr / 100;
-    } else if (ctr === 0 && impressions > 0 && clicks > 0) {
+    // CTRの解析（%記号を削除して数値に変換）
+    let ctrStr = String(row['クリック率（CTR）'] || row['CTR'] || '0');
+    ctrStr = ctrStr.replace('%', '').trim();
+    let ctr = parseFloat(ctrStr);
+    
+    // CTRが0で、表示回数とクリック数がある場合は計算
+    if ((isNaN(ctr) || ctr === 0) && impressions > 0 && clicks > 0) {
       ctr = (clicks / impressions) * 100;
     }
 
     // メイン訴求の配列化（カンマ区切りの場合）
     let mainAppeals: string[] = [];
     const mainAppealStr = row['メイン訴求'] || row['main_appeal'];
-    if (mainAppealStr && typeof mainAppealStr === 'string') {
+    if (mainAppealStr && typeof mainAppealStr === 'string' && mainAppealStr.trim()) {
       mainAppeals = mainAppealStr.split(',').map(s => s.trim()).filter(Boolean);
     }
 
     // サブ訴求の配列化（カンマ区切りの場合）
     let subAppeals: string[] = [];
     const subAppealStr = row['サブ訴求'] || row['sub_appeal'];
-    if (subAppealStr && typeof subAppealStr === 'string') {
+    if (subAppealStr && typeof subAppealStr === 'string' && subAppealStr.trim()) {
       subAppeals = subAppealStr.split(',').map(s => s.trim()).filter(Boolean);
     }
 
@@ -179,8 +181,8 @@ export function convertSheetDataToBanners(
       clicks: Math.round(clicks),
       ctr: parseFloat(ctr.toFixed(2)),
       employment_type: row['雇用形態'] || undefined,
-      banner_image_url: row['画像URL'] || row['バナー画像URL'] || undefined,
-      visual_type: row['人あり無し'] || row['ビジュアル種別'] || undefined,
+      banner_image_url: row['画像のURL'] || row['画像URL'] || row['バナー画像URL'] || undefined,
+      visual_type: row['人ありなし'] || row['人あり無し'] || row['ビジュアル種別'] || undefined,
       main_appeals: mainAppeals,
       sub_appeals: subAppeals,
       main_color: row['色味'] || row['メインカラー'] || undefined,
