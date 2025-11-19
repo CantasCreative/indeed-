@@ -209,13 +209,14 @@ app.post('/api/banners/sync-from-csv', async (c) => {
       }
     }
 
-    // Clear existing data and insert new data
-    await db.clearAllBanners(c.env.DB);
-
+    // Upsert data (update existing or create new)
+    // No need to clear all data - preserve existing banners and image URLs
+    
     // Disable foreign key constraints temporarily to allow free text in appeals
     await c.env.DB.prepare('PRAGMA foreign_keys = OFF').run();
 
     const imported = [];
+    const updated = [];
     const errors = [];
 
     for (const banner of banners) {
@@ -225,8 +226,13 @@ app.post('/api/banners/sync-from-csv', async (c) => {
           continue;
         }
 
-        const knowledgeId = await db.createBannerKnowledge(c.env.DB, banner);
-        imported.push({ ...banner, knowledge_id: knowledgeId });
+        const result = await db.upsertBannerKnowledge(c.env.DB, banner);
+        
+        if (result.isNew) {
+          imported.push({ ...banner, knowledge_id: result.knowledgeId });
+        } else {
+          updated.push({ ...banner, knowledge_id: result.knowledgeId });
+        }
       } catch (error: any) {
         errors.push({ banner, error: error.message });
       }
@@ -238,9 +244,10 @@ app.post('/api/banners/sync-from-csv', async (c) => {
     return c.json({ 
       success: true, 
       imported_count: imported.length,
+      updated_count: updated.length,
       error_count: errors.length,
       image_migration: migrationResults,
-      message: `${imported.length}件のバナーデータをインポートしました（画像移行: ${migrationResults.migrated}件成功 / ${migrationResults.failed}件失敗 / ${migrationResults.skipped}件スキップ）`,
+      message: `新規登録: ${imported.length}件 / 更新: ${updated.length}件（画像移行: ${migrationResults.migrated}件成功 / ${migrationResults.failed}件失敗 / ${migrationResults.skipped}件スキップ）`,
       errors: errors.length > 0 ? errors : undefined
     });
   } catch (error: any) {

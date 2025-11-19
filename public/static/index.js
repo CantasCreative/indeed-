@@ -522,7 +522,14 @@ class BannerAnalyticsSystem {
       
       if (response.data.success) {
         const migration = response.data.image_migration;
-        let message = `✅ ${response.data.imported_count}件のバナーデータをインポートしました`;
+        const imported = response.data.imported_count || 0;
+        const updated = response.data.updated_count || 0;
+        
+        let message = `✅ CSVインポート完了\n\n`;
+        message += `📊 処理結果:\n`;
+        message += `・新規登録: ${imported}件\n`;
+        message += `・更新: ${updated}件\n`;
+        message += `・合計: ${imported + updated}件`;
         
         if (migration && migration.total > 0) {
           message += `\n\n📸 画像移行結果:`;
@@ -534,6 +541,10 @@ class BannerAnalyticsSystem {
             message += `\n・スキップ: ${migration.skipped}件（既にR2に保存済み）`;
           }
           message += `\n\nGoogle DriveやDropboxの画像をCloudflare R2に自動移行しました。`;
+        }
+        
+        if (updated > 0) {
+          message += `\n\n💡 既存バナーの画像URLは保持されました。`;
         }
         
         alert(message);

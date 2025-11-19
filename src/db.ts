@@ -233,6 +233,126 @@ export async function getBannerKnowledgeById(
   return item;
 }
 
+// Get banner knowledge by image_id (参照番号)
+export async function getBannerKnowledgeByImageId(
+  db: D1Database,
+  imageId: string
+): Promise<BannerKnowledge | null> {
+  const result = await db
+    .prepare('SELECT * FROM banner_knowledge WHERE image_id = ?')
+    .bind(imageId)
+    .first();
+
+  if (!result) return null;
+
+  const item = result as BannerKnowledge;
+
+  // Get area (single selection)
+  const areasResult = await db
+    .prepare('SELECT area_code FROM banner_areas WHERE knowledge_id = ? LIMIT 1')
+    .bind(item.knowledge_id)
+    .all();
+  if (areasResult.results.length > 0) {
+    item.area = (areasResult.results[0] as any).area_code;
+    item.areas = [item.area];
+  }
+
+  // Get main appeals
+  const appealsResult = await db
+    .prepare('SELECT appeal_code FROM banner_main_appeals WHERE knowledge_id = ?')
+    .bind(item.knowledge_id)
+    .all();
+  item.main_appeals = appealsResult.results.map((r: any) => r.appeal_code);
+
+  // Get sub appeals
+  const subAppealsResult = await db
+    .prepare('SELECT appeal_code FROM banner_sub_appeals WHERE knowledge_id = ?')
+    .bind(item.knowledge_id)
+    .all();
+  item.sub_appeals = subAppealsResult.results.map((r: any) => r.appeal_code);
+
+  return item;
+}
+
+// Update or create banner knowledge (upsert)
+export async function upsertBannerKnowledge(
+  db: D1Database,
+  data: CreateBannerRequest
+): Promise<{ knowledgeId: string; isNew: boolean }> {
+  // Check if banner with same image_id exists
+  const existing = await getBannerKnowledgeByImageId(db, data.image_id);
+  
+  if (existing) {
+    // Update existing banner (preserve banner_image_url if not provided)
+    const updateData = {
+      ...data,
+      banner_image_url: data.banner_image_url || existing.banner_image_url
+    };
+
+    await db.prepare(`
+      UPDATE banner_knowledge SET
+        company_name = ?,
+        job_title = ?,
+        impressions = ?,
+        clicks = ?,
+        ctr = ?,
+        employment_type = ?,
+        banner_image_url = ?,
+        visual_type = ?,
+        main_color = ?,
+        atmosphere = ?,
+        extracted_text = ?,
+        notes = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE knowledge_id = ?
+    `).bind(
+      updateData.company_name || null,
+      updateData.job_title || null,
+      updateData.impressions || 0,
+      updateData.clicks || 0,
+      updateData.ctr || 0,
+      updateData.employment_type || null,
+      updateData.banner_image_url || null,
+      updateData.visual_type || null,
+      updateData.main_color || null,
+      updateData.atmosphere || null,
+      updateData.extracted_text || null,
+      updateData.notes || null,
+      existing.knowledge_id
+    ).run();
+
+    // Delete and recreate relationships
+    await db.prepare('DELETE FROM banner_areas WHERE knowledge_id = ?').bind(existing.knowledge_id).run();
+    await db.prepare('DELETE FROM banner_main_appeals WHERE knowledge_id = ?').bind(existing.knowledge_id).run();
+    await db.prepare('DELETE FROM banner_sub_appeals WHERE knowledge_id = ?').bind(existing.knowledge_id).run();
+
+    // Insert area (single selection)
+    if (data.area) {
+      await db.prepare('INSERT INTO banner_areas (knowledge_id, area_code) VALUES (?, ?)').bind(existing.knowledge_id, data.area).run();
+    }
+
+    // Insert main appeals
+    if (data.main_appeals && data.main_appeals.length > 0) {
+      for (const appeal of data.main_appeals) {
+        await db.prepare('INSERT INTO banner_main_appeals (knowledge_id, appeal_code) VALUES (?, ?)').bind(existing.knowledge_id, appeal).run();
+      }
+    }
+
+    // Insert sub appeals
+    if (data.sub_appeals && data.sub_appeals.length > 0) {
+      for (const appeal of data.sub_appeals) {
+        await db.prepare('INSERT INTO banner_sub_appeals (knowledge_id, appeal_code) VALUES (?, ?)').bind(existing.knowledge_id, appeal).run();
+      }
+    }
+
+    return { knowledgeId: existing.knowledge_id, isNew: false };
+  } else {
+    // Create new banner
+    const knowledgeId = await createBannerKnowledge(db, data);
+    return { knowledgeId, isNew: true };
+  }
+}
+
 // Clear all banner knowledge data (for sheet sync)
 export async function clearAllBanners(db: D1Database): Promise<void> {
   // Delete in order due to foreign key constraints
