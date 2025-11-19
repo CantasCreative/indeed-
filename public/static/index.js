@@ -576,16 +576,13 @@ class BannerAnalyticsSystem {
     this.selectedImageFiles = validFiles;
     
     // Display selected files
-    const fileListHtml = validFiles.map(f => 
-      `<div class="text-sm text-gray-700">✓ ${f.name} (${(f.size / 1024).toFixed(1)} KB)</div>`
-    ).join('');
-    
-    document.getElementById('imageDropZone').innerHTML = `
-      <i class="fas fa-images text-5xl text-green-500 mb-3"></i>
-      <p class="text-lg font-semibold text-gray-700 mb-2">${validFiles.length}個のファイルを選択</p>
-      ${fileListHtml}
-      <p class="text-sm text-gray-500 mt-3">クリックして変更</p>
-    `;
+    const fileNames = document.getElementById('imageFileNames');
+    if (fileNames) {
+      const fileListHtml = validFiles.map(f => 
+        `<div class="text-sm text-green-600">✓ ${f.name} (${(f.size / 1024).toFixed(1)} KB)</div>`
+      ).join('');
+      fileNames.innerHTML = fileListHtml;
+    }
   }
 
   async uploadImages() {
@@ -666,18 +663,16 @@ class BannerAnalyticsSystem {
         
         // Reset file selection
         this.selectedImageFiles = [];
-        document.getElementById('imageFileInput').value = '';
+        const imageFileInput = document.getElementById('imageFileInput');
+        if (imageFileInput) {
+          imageFileInput.value = '';
+        }
         
-        // Reset drop zone
-        document.getElementById('imageDropZone').innerHTML = `
-          <i class="fas fa-images text-5xl text-gray-400 mb-3"></i>
-          <p class="text-lg font-semibold text-gray-700 mb-2">画像ファイルをドラッグ＆ドロップ</p>
-          <p class="text-sm text-gray-500">または</p>
-          <button class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-            <i class="fas fa-folder-open mr-2"></i>ファイルを選択
-          </button>
-          <p class="text-xs text-gray-500 mt-3">対応形式: JPG, PNG, GIF, WebP (最大5MB)</p>
-        `;
+        // Reset file names display
+        const fileNames = document.getElementById('imageFileNames');
+        if (fileNames) {
+          fileNames.innerHTML = '';
+        }
         
       } else {
         resultsDiv.innerHTML = `
@@ -692,10 +687,21 @@ class BannerAnalyticsSystem {
       console.error('Image upload failed:', error);
       progressDiv.classList.add('hidden');
       resultsDiv.classList.remove('hidden');
+      
+      let errorMessage = '画像のアップロードに失敗しました';
+      if (error.response && error.response.data && error.response.data.error) {
+        errorMessage += `: ${error.response.data.error}`;
+      } else if (error.message) {
+        errorMessage += `: ${error.message}`;
+      }
+      
       resultsDiv.innerHTML = `
         <div class="bg-red-50 border border-red-200 rounded p-4">
           <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
-          <span class="text-red-700">画像のアップロードに失敗しました</span>
+          <span class="text-red-700">${errorMessage}</span>
+          <div class="mt-2 text-xs text-gray-600">
+            <p>ブラウザのコンソール（F12）を開いて詳細を確認してください</p>
+          </div>
         </div>
       `;
     } finally {
