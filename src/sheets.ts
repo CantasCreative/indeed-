@@ -163,6 +163,31 @@ function convertToDirectImageUrl(url: string): string {
 }
 
 /**
+ * URLがGoogle DriveまたはDropboxのURLかどうかを判定
+ * @param url チェックするURL
+ * @returns 外部ストレージURLの場合true
+ */
+export function isExternalStorageUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+
+  const trimmedUrl = url.trim().toLowerCase();
+  
+  // Google Drive URL
+  if (trimmedUrl.includes('drive.google.com')) {
+    return true;
+  }
+  
+  // Dropbox URL
+  if (trimmedUrl.includes('dropbox.com')) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * スプレッドシートデータをBannerKnowledgeフォーマットに変換
  * @param sheetRows スプレッドシート行データ
  * @param areaMap エリアコードマッピング

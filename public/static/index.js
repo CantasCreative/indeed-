@@ -6,6 +6,7 @@ class BannerAnalyticsSystem {
     this.dictionaries = {};
     this.sheetConfig = this.loadSheetConfig();
     this.selectedCSVFile = null;
+    this.selectedImageFiles = [];
     this.init();
   }
 
@@ -209,7 +210,10 @@ class BannerAnalyticsSystem {
             <!-- Tab Navigation -->
             <div class="flex border-b border-gray-200 mb-6">
               <button id="tabCSVUpload" class="tab-button active px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
-                <i class="fas fa-file-csv mr-2"></i>CSVアップロード（推奨）
+                <i class="fas fa-file-csv mr-2"></i>CSVアップロード
+              </button>
+              <button id="tabImageUpload" class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                <i class="fas fa-images mr-2"></i>画像管理
               </button>
               <button id="tabWebPublish" class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
                 <i class="fas fa-globe mr-2"></i>ウェブ公開連携
@@ -245,6 +249,65 @@ class BannerAnalyticsSystem {
                   <li>スプレッドシートで「ファイル」→「ダウンロード」→「カンマ区切り形式(.csv)」</li>
                   <li>ダウンロードしたCSVファイルをここにアップロード</li>
                 </ol>
+              </div>
+            </div>
+
+            <!-- Image Upload Tab -->
+            <div id="imageUploadTab" class="space-y-4 mb-6 hidden">
+              <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <div class="flex items-start">
+                  <i class="fas fa-shield-alt text-green-600 mr-2 mt-1"></i>
+                  <div class="text-sm text-gray-700">
+                    <p class="font-semibold mb-1">安全な画像管理</p>
+                    <p>画像をCloudflare R2に保存します。外部に公開せず、完全にシステム内で管理できます。</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div class="flex items-start">
+                  <i class="fas fa-info-circle text-blue-600 mr-2 mt-1"></i>
+                  <div class="text-sm text-gray-700">
+                    <p class="font-semibold mb-1">📸 自動画像移行機能</p>
+                    <p class="mb-2">CSVインポート時に、Google DriveやDropboxの画像URLを自動的にCloudflare R2に移行します。</p>
+                    <ul class="list-disc ml-4 space-y-1 text-xs">
+                      <li>Google Drive URLを検出して自動ダウンロード</li>
+                      <li>Cloudflare R2に安全に保存</li>
+                      <li>社内限定ファイルも安全に管理</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  画像ファイルを選択（複数可）
+                </label>
+                <div id="imageDropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-green-500 transition-colors">
+                  <input type="file" id="imageFileInput" accept="image/*" multiple class="hidden">
+                  <i class="fas fa-images text-5xl text-gray-400 mb-3"></i>
+                  <p class="text-gray-600 mb-2">画像ファイルをドラッグ＆ドロップ</p>
+                  <p class="text-sm text-gray-400">または クリックして複数選択</p>
+                  <p class="text-xs text-gray-500 mt-2">JPG, PNG, GIF, WebP (最大5MB)</p>
+                  <div id="imageFileNames" class="mt-3 space-y-1"></div>
+                </div>
+              </div>
+              
+              <div id="uploadProgress" class="hidden">
+                <div class="bg-gray-100 rounded-lg p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-gray-700">アップロード中...</span>
+                    <span id="uploadProgressText" class="text-sm text-gray-600">0%</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="uploadProgressBar" class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="uploadResults" class="hidden space-y-2">
+                <h4 class="font-semibold text-gray-800">アップロード結果</h4>
+                <div id="uploadResultsList" class="space-y-2 max-h-60 overflow-y-auto"></div>
               </div>
             </div>
 
@@ -291,6 +354,10 @@ class BannerAnalyticsSystem {
                 <i class="fas fa-upload mr-2"></i>
                 CSVをインポート
               </button>
+              <button id="uploadImagesButton" class="hidden px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <i class="fas fa-cloud-upload-alt mr-2"></i>
+                画像をアップロード
+              </button>
               <button id="saveConfigButton" class="hidden px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                 <i class="fas fa-save mr-2"></i>
                 保存して同期
@@ -319,12 +386,14 @@ class BannerAnalyticsSystem {
     document.getElementById('saveConfigButton').addEventListener('click', () => this.saveAndSync());
     document.getElementById('cancelConfigButton').addEventListener('click', () => this.hideConfigModal());
     document.getElementById('uploadCSVButton').addEventListener('click', () => this.uploadCSV());
+    document.getElementById('uploadImagesButton').addEventListener('click', () => this.uploadImages());
     document.getElementById('applyFilters')?.addEventListener('click', () => this.applyFilters());
     document.getElementById('analyzeButton')?.addEventListener('click', () => this.runAIAnalysis());
     
     // Tab switching
     document.getElementById('tabCSVUpload')?.addEventListener('click', () => this.switchTab('csv'));
     document.getElementById('tabWebPublish')?.addEventListener('click', () => this.switchTab('web'));
+    document.getElementById('tabImageUpload')?.addEventListener('click', () => this.switchTab('image'));
     
     // CSV file drop zone
     const csvDropZone = document.getElementById('csvDropZone');
@@ -351,34 +420,78 @@ class BannerAnalyticsSystem {
         this.handleCSVFile(e.target.files[0]);
       }
     });
+    
+    // Image file drop zone
+    const imageDropZone = document.getElementById('imageDropZone');
+    const imageFileInput = document.getElementById('imageFileInput');
+    
+    imageDropZone?.addEventListener('click', () => imageFileInput.click());
+    imageDropZone?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      imageDropZone.classList.add('border-blue-500', 'bg-blue-50');
+    });
+    imageDropZone?.addEventListener('dragleave', () => {
+      imageDropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    });
+    imageDropZone?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      imageDropZone.classList.remove('border-blue-500', 'bg-blue-50');
+      if (e.dataTransfer.files.length > 0) {
+        this.handleImageFiles(Array.from(e.dataTransfer.files));
+      }
+    });
+    
+    imageFileInput?.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        this.handleImageFiles(Array.from(e.target.files));
+      }
+    });
   }
 
   switchTab(tab) {
     const csvTab = document.getElementById('csvUploadTab');
     const webTab = document.getElementById('webPublishTab');
+    const imageTab = document.getElementById('imageUploadTab');
     const csvButton = document.getElementById('tabCSVUpload');
     const webButton = document.getElementById('tabWebPublish');
-    const uploadButton = document.getElementById('uploadCSVButton');
+    const imageButton = document.getElementById('tabImageUpload');
+    const uploadCSVButton = document.getElementById('uploadCSVButton');
+    const uploadImagesButton = document.getElementById('uploadImagesButton');
     const saveButton = document.getElementById('saveConfigButton');
     
+    // Hide all tabs
+    csvTab?.classList.add('hidden');
+    webTab?.classList.add('hidden');
+    imageTab?.classList.add('hidden');
+    
+    // Remove active state from all buttons
+    csvButton?.classList.remove('active', 'border-blue-600', 'text-blue-600');
+    csvButton?.classList.add('border-transparent', 'text-gray-500');
+    webButton?.classList.remove('active', 'border-blue-600', 'text-blue-600');
+    webButton?.classList.add('border-transparent', 'text-gray-500');
+    imageButton?.classList.remove('active', 'border-blue-600', 'text-blue-600');
+    imageButton?.classList.add('border-transparent', 'text-gray-500');
+    
+    // Hide all action buttons
+    uploadCSVButton?.classList.add('hidden');
+    uploadImagesButton?.classList.add('hidden');
+    saveButton?.classList.add('hidden');
+    
     if (tab === 'csv') {
-      csvTab.classList.remove('hidden');
-      webTab.classList.add('hidden');
-      csvButton.classList.add('active', 'border-blue-600', 'text-blue-600');
-      csvButton.classList.remove('border-transparent', 'text-gray-500');
-      webButton.classList.remove('active', 'border-blue-600', 'text-blue-600');
-      webButton.classList.add('border-transparent', 'text-gray-500');
-      uploadButton.classList.remove('hidden');
-      saveButton.classList.add('hidden');
+      csvTab?.classList.remove('hidden');
+      csvButton?.classList.add('active', 'border-blue-600', 'text-blue-600');
+      csvButton?.classList.remove('border-transparent', 'text-gray-500');
+      uploadCSVButton?.classList.remove('hidden');
+    } else if (tab === 'image') {
+      imageTab?.classList.remove('hidden');
+      imageButton?.classList.add('active', 'border-blue-600', 'text-blue-600');
+      imageButton?.classList.remove('border-transparent', 'text-gray-500');
+      uploadImagesButton?.classList.remove('hidden');
     } else {
-      csvTab.classList.add('hidden');
-      webTab.classList.remove('hidden');
-      webButton.classList.add('active', 'border-blue-600', 'text-blue-600');
-      webButton.classList.remove('border-transparent', 'text-gray-500');
-      csvButton.classList.remove('active', 'border-blue-600', 'text-blue-600');
-      csvButton.classList.add('border-transparent', 'text-gray-500');
-      uploadButton.classList.add('hidden');
-      saveButton.classList.remove('hidden');
+      webTab?.classList.remove('hidden');
+      webButton?.classList.add('active', 'border-blue-600', 'text-blue-600');
+      webButton?.classList.remove('border-transparent', 'text-gray-500');
+      saveButton?.classList.remove('hidden');
     }
   }
 
@@ -408,7 +521,22 @@ class BannerAnalyticsSystem {
       const response = await axios.post('/api/banners/sync-from-csv', { csv_text: csvText });
       
       if (response.data.success) {
-        alert(`✅ ${response.data.imported_count}件のバナーデータをインポートしました`);
+        const migration = response.data.image_migration;
+        let message = `✅ ${response.data.imported_count}件のバナーデータをインポートしました`;
+        
+        if (migration && migration.total > 0) {
+          message += `\n\n📸 画像移行結果:`;
+          message += `\n・移行成功: ${migration.migrated}件`;
+          if (migration.failed > 0) {
+            message += `\n・移行失敗: ${migration.failed}件`;
+          }
+          if (migration.skipped > 0) {
+            message += `\n・スキップ: ${migration.skipped}件（既にR2に保存済み）`;
+          }
+          message += `\n\nGoogle DriveやDropboxの画像をCloudflare R2に自動移行しました。`;
+        }
+        
+        alert(message);
         this.hideConfigModal();
         await this.loadBanners();
         this.hideSetupGuide();
@@ -420,6 +548,158 @@ class BannerAnalyticsSystem {
       alert('CSVのインポートに失敗しました');
     } finally {
       uploadButton.innerHTML = '<i class="fas fa-upload mr-2"></i>CSVをインポート';
+      uploadButton.disabled = false;
+    }
+  }
+
+  handleImageFiles(files) {
+    // Filter valid image files
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    
+    const validFiles = files.filter(file => {
+      if (!validTypes.includes(file.type)) {
+        alert(`❌ ${file.name} は対応していないファイル形式です`);
+        return false;
+      }
+      if (file.size > maxSize) {
+        alert(`❌ ${file.name} はサイズが大きすぎます (最大5MB)`);
+        return false;
+      }
+      return true;
+    });
+    
+    if (validFiles.length === 0) {
+      return;
+    }
+    
+    this.selectedImageFiles = validFiles;
+    
+    // Display selected files
+    const fileListHtml = validFiles.map(f => 
+      `<div class="text-sm text-gray-700">✓ ${f.name} (${(f.size / 1024).toFixed(1)} KB)</div>`
+    ).join('');
+    
+    document.getElementById('imageDropZone').innerHTML = `
+      <i class="fas fa-images text-5xl text-green-500 mb-3"></i>
+      <p class="text-lg font-semibold text-gray-700 mb-2">${validFiles.length}個のファイルを選択</p>
+      ${fileListHtml}
+      <p class="text-sm text-gray-500 mt-3">クリックして変更</p>
+    `;
+  }
+
+  async uploadImages() {
+    if (!this.selectedImageFiles || this.selectedImageFiles.length === 0) {
+      alert('画像ファイルを選択してください');
+      return;
+    }
+
+    const uploadButton = document.getElementById('uploadImagesButton');
+    const progressDiv = document.getElementById('uploadProgress');
+    const resultsDiv = document.getElementById('uploadResults');
+    
+    uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>アップロード中...';
+    uploadButton.disabled = true;
+    progressDiv.classList.remove('hidden');
+    resultsDiv.classList.add('hidden');
+
+    try {
+      const formData = new FormData();
+      this.selectedImageFiles.forEach(file => {
+        formData.append('images', file);
+      });
+
+      const response = await axios.post('/api/upload-batch', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          document.getElementById('uploadProgressBar').style.width = percentCompleted + '%';
+          document.getElementById('uploadProgressText').textContent = `${percentCompleted}%`;
+        }
+      });
+
+      // Display results
+      progressDiv.classList.add('hidden');
+      resultsDiv.classList.remove('hidden');
+      
+      if (response.data.success) {
+        const successHtml = response.data.results.map(r => `
+          <div class="bg-green-50 border border-green-200 rounded p-3 mb-2">
+            <div class="flex items-start">
+              <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+              <div class="flex-1">
+                <div class="font-semibold text-gray-800">${r.originalName}</div>
+                <div class="text-sm text-gray-600 mt-1">URL: <code class="bg-gray-100 px-2 py-1 rounded text-xs">${r.url}</code></div>
+                <button onclick="navigator.clipboard.writeText('${r.url}')" class="text-xs text-blue-600 hover:underline mt-1">
+                  <i class="fas fa-copy mr-1"></i>URLをコピー
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+        
+        const errorHtml = response.data.errors && response.data.errors.length > 0 ? 
+          response.data.errors.map(e => `
+            <div class="bg-red-50 border border-red-200 rounded p-3 mb-2">
+              <div class="flex items-start">
+                <i class="fas fa-exclamation-circle text-red-500 mt-1 mr-2"></i>
+                <div class="flex-1">
+                  <div class="font-semibold text-gray-800">${e.file}</div>
+                  <div class="text-sm text-red-600 mt-1">${e.error}</div>
+                </div>
+              </div>
+            </div>
+          `).join('') : '';
+        
+        resultsDiv.innerHTML = `
+          <div class="mb-4">
+            <h4 class="font-semibold text-gray-800 mb-2">
+              <i class="fas fa-check-circle text-green-500 mr-2"></i>
+              アップロード完了: ${response.data.uploaded}件成功 ${response.data.failed > 0 ? `/ ${response.data.failed}件失敗` : ''}
+            </h4>
+          </div>
+          ${successHtml}
+          ${errorHtml}
+        `;
+        
+        // Reset file selection
+        this.selectedImageFiles = [];
+        document.getElementById('imageFileInput').value = '';
+        
+        // Reset drop zone
+        document.getElementById('imageDropZone').innerHTML = `
+          <i class="fas fa-images text-5xl text-gray-400 mb-3"></i>
+          <p class="text-lg font-semibold text-gray-700 mb-2">画像ファイルをドラッグ＆ドロップ</p>
+          <p class="text-sm text-gray-500">または</p>
+          <button class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            <i class="fas fa-folder-open mr-2"></i>ファイルを選択
+          </button>
+          <p class="text-xs text-gray-500 mt-3">対応形式: JPG, PNG, GIF, WebP (最大5MB)</p>
+        `;
+        
+      } else {
+        resultsDiv.innerHTML = `
+          <div class="bg-red-50 border border-red-200 rounded p-4">
+            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+            <span class="text-red-700">アップロードエラー: ${response.data.error}</span>
+          </div>
+        `;
+      }
+      
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      progressDiv.classList.add('hidden');
+      resultsDiv.classList.remove('hidden');
+      resultsDiv.innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded p-4">
+          <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+          <span class="text-red-700">画像のアップロードに失敗しました</span>
+        </div>
+      `;
+    } finally {
+      uploadButton.innerHTML = '<i class="fas fa-cloud-upload-alt mr-2"></i>画像をアップロード';
       uploadButton.disabled = false;
     }
   }
