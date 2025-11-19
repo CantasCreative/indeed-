@@ -4,7 +4,6 @@ class BannerAnalyticsSystem {
     this.banners = [];
     this.filteredBanners = [];
     this.dictionaries = {};
-    this.sheetConfig = this.loadSheetConfig();
     this.selectedCSVFile = null;
     this.selectedImageFiles = [];
     this.init();
@@ -19,7 +18,7 @@ class BannerAnalyticsSystem {
     await this.loadBanners();
     
     // データがなければセットアップガイドを表示
-    if (this.currentBannerKnowledges.length === 0) {
+    if (this.banners.length === 0) {
       this.showSetupGuide();
     }
   }
