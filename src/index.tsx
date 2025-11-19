@@ -276,6 +276,28 @@ app.get('/api/banners/:id', async (c) => {
   }
 });
 
+// Update banner image URL
+app.patch('/api/banners/:id/image', async (c) => {
+  try {
+    const knowledgeId = c.req.param('id');
+    const { banner_image_url } = await c.req.json();
+    
+    if (!banner_image_url) {
+      return c.json({ success: false, error: 'banner_image_url is required' }, 400);
+    }
+
+    // Update banner image URL in database
+    await c.env.DB.prepare(
+      'UPDATE banner_knowledge SET banner_image_url = ?, updated_at = CURRENT_TIMESTAMP WHERE knowledge_id = ?'
+    ).bind(banner_image_url, knowledgeId).run();
+
+    return c.json({ success: true, message: 'Image URL updated successfully' });
+  } catch (error: any) {
+    console.error('Update image URL error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 // Upload banner image to R2
 app.post('/api/upload', async (c) => {
   try {

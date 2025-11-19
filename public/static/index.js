@@ -979,10 +979,17 @@ class BannerAnalyticsSystem {
           <div class="p-6">
             <!-- Banner Image -->
             <div class="mb-6">
-              <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
-                <i class="fas fa-image mr-2 text-blue-600"></i>
-                バナー画像
-              </h3>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                  <i class="fas fa-image mr-2 text-blue-600"></i>
+                  バナー画像
+                </h3>
+                <button onclick="bannerSystem.showImageUpdateModal('${banner.knowledge_id}', '${banner.banner_image_url || ''}')" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                  <i class="fas fa-upload mr-2"></i>
+                  画像を変更
+                </button>
+              </div>
               <div class="relative rounded-xl overflow-hidden shadow-lg bg-gray-100">
                 ${banner.banner_image_url 
                   ? `<img src="${banner.banner_image_url}" alt="${banner.job_title || 'バナー'}" class="w-full object-contain max-h-96" referrerpolicy="no-referrer" crossorigin="anonymous" loading="lazy">` 
@@ -1088,6 +1095,286 @@ class BannerAnalyticsSystem {
       console.error('Failed to show banner detail:', error);
       alert('バナー詳細の表示に失敗しました');
     }
+  }
+
+  showImageUpdateModal(knowledgeId, currentImageUrl) {
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4';
+    modal.id = 'imageUpdateModal';
+    modal.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full">
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
+          <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-bold flex items-center">
+              <i class="fas fa-image mr-3"></i>
+              画像を変更
+            </h2>
+            <button onclick="document.getElementById('imageUpdateModal').remove()" class="text-white hover:text-gray-200 text-2xl">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="p-6 space-y-6">
+          <!-- Current Image -->
+          ${currentImageUrl ? `
+            <div>
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">現在の画像</h3>
+              <div class="rounded-lg overflow-hidden border border-gray-300">
+                <img src="${currentImageUrl}" alt="現在の画像" class="w-full object-contain max-h-48" referrerpolicy="no-referrer" crossorigin="anonymous" loading="lazy">
+              </div>
+              <p class="text-xs text-gray-500 mt-1 break-all">${currentImageUrl}</p>
+            </div>
+          ` : '<p class="text-gray-500 italic">現在画像が設定されていません</p>'}
+          
+          <!-- Tab Navigation -->
+          <div class="flex border-b border-gray-200">
+            <button id="tabUploadNewImage" class="tab-button active px-4 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
+              <i class="fas fa-upload mr-2"></i>新しい画像をアップロード
+            </button>
+            <button id="tabPasteUrl" class="tab-button px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+              <i class="fas fa-link mr-2"></i>URLを貼り付け
+            </button>
+          </div>
+          
+          <!-- Upload Tab -->
+          <div id="uploadNewImageTab" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">画像ファイルを選択</label>
+              <div id="singleImageDropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors">
+                <input type="file" id="singleImageInput" accept="image/*" class="hidden">
+                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                <p class="text-gray-600 text-sm">クリックまたはドラッグ＆ドロップ</p>
+                <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF, WebP (最大5MB)</p>
+                <div id="singleImageFileName" class="mt-2 text-sm text-green-600"></div>
+              </div>
+            </div>
+            
+            <div id="uploadProgressSingle" class="hidden">
+              <div class="bg-gray-100 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-gray-700">アップロード中...</span>
+                  <span id="uploadProgressTextSingle" class="text-sm text-gray-600">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div id="uploadProgressBarSingle" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Paste URL Tab -->
+          <div id="pasteUrlTab" class="space-y-4 hidden">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">画像URL</label>
+              <input type="text" id="imageUrlInput" 
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://example.com/image.jpg または /api/images/banners/...">
+              <p class="text-xs text-gray-500 mt-1">Cloudflare R2にアップロードした画像URLまたは外部URLを入力</p>
+            </div>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button onclick="document.getElementById('imageUpdateModal').remove()" 
+              class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+              キャンセル
+            </button>
+            <button id="saveImageUrlButton" 
+              class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <i class="fas fa-save mr-2"></i>
+              保存
+            </button>
+          </div>
+          
+          <div id="imageUpdateResult" class="hidden"></div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Store knowledge ID
+    modal.dataset.knowledgeId = knowledgeId;
+    
+    // Setup event listeners
+    this.setupImageUpdateModalEvents(modal);
+    
+    // Close on outside click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  }
+  
+  setupImageUpdateModalEvents(modal) {
+    const knowledgeId = modal.dataset.knowledgeId;
+    
+    // Tab switching
+    const uploadTab = modal.querySelector('#uploadNewImageTab');
+    const urlTab = modal.querySelector('#pasteUrlTab');
+    const uploadButton = modal.querySelector('#tabUploadNewImage');
+    const urlButton = modal.querySelector('#tabPasteUrl');
+    
+    uploadButton.addEventListener('click', () => {
+      uploadTab.classList.remove('hidden');
+      urlTab.classList.add('hidden');
+      uploadButton.classList.add('active', 'border-blue-600', 'text-blue-600');
+      uploadButton.classList.remove('border-transparent', 'text-gray-500');
+      urlButton.classList.remove('active', 'border-blue-600', 'text-blue-600');
+      urlButton.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    urlButton.addEventListener('click', () => {
+      urlTab.classList.remove('hidden');
+      uploadTab.classList.add('hidden');
+      urlButton.classList.add('active', 'border-blue-600', 'text-blue-600');
+      urlButton.classList.remove('border-transparent', 'text-gray-500');
+      uploadButton.classList.remove('active', 'border-blue-600', 'text-blue-600');
+      uploadButton.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    // File upload handling
+    const dropZone = modal.querySelector('#singleImageDropZone');
+    const fileInput = modal.querySelector('#singleImageInput');
+    let selectedFile = null;
+    
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-blue-500', 'bg-blue-50');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+      if (e.dataTransfer.files.length > 0) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFileSelect(e.target.files[0]);
+      }
+    });
+    
+    const handleFileSelect = (file) => {
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      
+      if (!validTypes.includes(file.type)) {
+        alert(`❌ ${file.name} は対応していないファイル形式です`);
+        return;
+      }
+      if (file.size > maxSize) {
+        alert(`❌ ${file.name} はサイズが大きすぎます (最大5MB)`);
+        return;
+      }
+      
+      selectedFile = file;
+      const fileName = modal.querySelector('#singleImageFileName');
+      fileName.textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    };
+    
+    // Save button
+    const saveButton = modal.querySelector('#saveImageUrlButton');
+    saveButton.addEventListener('click', async () => {
+      const resultDiv = modal.querySelector('#imageUpdateResult');
+      
+      try {
+        let newImageUrl = '';
+        
+        // Check which tab is active
+        if (!uploadTab.classList.contains('hidden')) {
+          // Upload new image
+          if (!selectedFile) {
+            alert('画像ファイルを選択してください');
+            return;
+          }
+          
+          saveButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>アップロード中...';
+          saveButton.disabled = true;
+          
+          const progressDiv = modal.querySelector('#uploadProgressSingle');
+          progressDiv.classList.remove('hidden');
+          
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          
+          const uploadResponse = await axios.post('/api/upload', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            },
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              modal.querySelector('#uploadProgressBarSingle').style.width = percentCompleted + '%';
+              modal.querySelector('#uploadProgressTextSingle').textContent = `${percentCompleted}%`;
+            }
+          });
+          
+          progressDiv.classList.add('hidden');
+          
+          if (!uploadResponse.data.success) {
+            throw new Error(uploadResponse.data.error || 'アップロードに失敗しました');
+          }
+          
+          newImageUrl = uploadResponse.data.url;
+        } else {
+          // Use pasted URL
+          newImageUrl = modal.querySelector('#imageUrlInput').value.trim();
+          if (!newImageUrl) {
+            alert('画像URLを入力してください');
+            return;
+          }
+        }
+        
+        // Update banner image URL
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>保存中...';
+        saveButton.disabled = true;
+        
+        const updateResponse = await axios.patch(`/api/banners/${knowledgeId}/image`, {
+          banner_image_url: newImageUrl
+        });
+        
+        if (updateResponse.data.success) {
+          resultDiv.innerHTML = `
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+              <i class="fas fa-check-circle text-green-500 mr-2"></i>
+              <span class="text-green-700 font-semibold">画像を更新しました!</span>
+            </div>
+          `;
+          resultDiv.classList.remove('hidden');
+          
+          // Reload banner list and close modal after 1.5 seconds
+          setTimeout(async () => {
+            await this.loadBanners();
+            modal.remove();
+          }, 1500);
+        } else {
+          throw new Error(updateResponse.data.error || '更新に失敗しました');
+        }
+      } catch (error) {
+        console.error('Image update failed:', error);
+        resultDiv.innerHTML = `
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+            <span class="text-red-700">${error.response?.data?.error || error.message || '画像の更新に失敗しました'}</span>
+          </div>
+        `;
+        resultDiv.classList.remove('hidden');
+      } finally {
+        saveButton.innerHTML = '<i class="fas fa-save mr-2"></i>保存';
+        saveButton.disabled = false;
+      }
+    });
   }
 
   async analyzeSingleBanner(knowledgeId) {
