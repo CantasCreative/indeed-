@@ -15,22 +15,13 @@ class BannerAnalyticsSystem {
     this.render();
     this.attachEventListeners();
     
-    // スプレッドシート設定があれば自動同期
-    if (this.sheetConfig.spreadsheet_id) {
-      await this.syncFromSheet();
-    } else {
+    // バナーデータを読み込む
+    await this.loadBanners();
+    
+    // データがなければセットアップガイドを表示
+    if (this.currentBannerKnowledges.length === 0) {
       this.showSetupGuide();
     }
-  }
-
-  loadSheetConfig() {
-    const saved = localStorage.getItem('sheet_config');
-    return saved ? JSON.parse(saved) : {};
-  }
-
-  saveSheetConfig(config) {
-    localStorage.setItem('sheet_config', JSON.stringify(config));
-    this.sheetConfig = config;
   }
 
   async loadDictionaries() {
@@ -200,25 +191,25 @@ class BannerAnalyticsSystem {
         </div>
 
         <!-- Sheet Config Modal -->
-        <div id="configModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 p-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-              <i class="fas fa-upload text-blue-600 mr-3"></i>
-              データインポート
-            </h2>
-            
-            <!-- Tab Navigation -->
-            <div class="flex border-b border-gray-200 mb-6">
-              <button id="tabCSVUpload" class="tab-button active px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
-                <i class="fas fa-file-csv mr-2"></i>CSVアップロード
-              </button>
-              <button id="tabImageUpload" class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                <i class="fas fa-images mr-2"></i>画像管理
-              </button>
-              <button id="tabWebPublish" class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                <i class="fas fa-globe mr-2"></i>ウェブ公開連携
-              </button>
+        <div id="configModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white rounded-t-2xl p-8 pb-4 border-b border-gray-200">
+              <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                <i class="fas fa-upload text-blue-600 mr-3"></i>
+                データインポート
+              </h2>
             </div>
+            
+            <div class="p-8 pt-4">
+              <!-- Tab Navigation -->
+              <div class="flex border-b border-gray-200 mb-6">
+                <button id="tabCSVUpload" class="tab-button active px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
+                  <i class="fas fa-file-csv mr-2"></i>CSVアップロード
+                </button>
+                <button id="tabImageUpload" class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                  <i class="fas fa-images mr-2"></i>画像管理
+                </button>
+              </div>
 
             <!-- CSV Upload Tab -->
             <div id="csvUploadTab" class="space-y-4 mb-6">
@@ -311,57 +302,20 @@ class BannerAnalyticsSystem {
               </div>
             </div>
 
-            <!-- Web Publish Tab -->
-            <div id="webPublishTab" class="space-y-4 mb-6 hidden">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  スプレッドシートID <span class="text-red-500">*</span>
-                </label>
-                <input type="text" id="configSpreadsheetId" 
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="1ABC...xyz">
-                <p class="text-xs text-gray-500 mt-1">URLの「/d/」と「/edit」の間の文字列</p>
+              <!-- Action Buttons -->
+              <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 sticky bottom-0 bg-white">
+                <button id="cancelConfigButton" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                  キャンセル
+                </button>
+                <button id="uploadCSVButton" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                  <i class="fas fa-upload mr-2"></i>
+                  CSVをインポート
+                </button>
+                <button id="uploadImagesButton" class="hidden px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                  <i class="fas fa-cloud-upload-alt mr-2"></i>
+                  画像をアップロード
+                </button>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  シートID（gid）- オプション
-                </label>
-                <input type="text" id="configGid" 
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="0" value="0">
-                <p class="text-xs text-gray-500 mt-1">URLの「#gid=」の後の数字（通常は0）</p>
-              </div>
-              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div class="flex items-start">
-                  <i class="fas fa-exclamation-triangle text-yellow-600 mr-2 mt-1"></i>
-                  <div class="text-sm text-gray-700">
-                    <p class="font-semibold mb-1">注意：スプレッドシートを「ウェブに公開」する必要があります</p>
-                    <ol class="list-decimal ml-4 space-y-1">
-                      <li>スプレッドシートで「ファイル」→「共有」→「ウェブに公開」をクリック</li>
-                      <li>「リンク」タブで「公開」をクリック</li>
-                      <li>機密情報がある場合はCSVアップロードをご利用ください</li>
-                    </ol>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex justify-end space-x-3">
-              <button id="cancelConfigButton" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                キャンセル
-              </button>
-              <button id="uploadCSVButton" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                <i class="fas fa-upload mr-2"></i>
-                CSVをインポート
-              </button>
-              <button id="uploadImagesButton" class="hidden px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                <i class="fas fa-cloud-upload-alt mr-2"></i>
-                画像をアップロード
-              </button>
-              <button id="saveConfigButton" class="hidden px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                <i class="fas fa-save mr-2"></i>
-                保存して同期
-              </button>
             </div>
           </div>
         </div>
@@ -383,7 +337,6 @@ class BannerAnalyticsSystem {
   attachEventListeners() {
     document.getElementById('syncButton').addEventListener('click', () => this.showConfigModal());
     document.getElementById('setupButton')?.addEventListener('click', () => this.showConfigModal());
-    document.getElementById('saveConfigButton').addEventListener('click', () => this.saveAndSync());
     document.getElementById('cancelConfigButton').addEventListener('click', () => this.hideConfigModal());
     document.getElementById('uploadCSVButton').addEventListener('click', () => this.uploadCSV());
     document.getElementById('uploadImagesButton').addEventListener('click', () => this.uploadImages());
@@ -392,7 +345,6 @@ class BannerAnalyticsSystem {
     
     // Tab switching
     document.getElementById('tabCSVUpload')?.addEventListener('click', () => this.switchTab('csv'));
-    document.getElementById('tabWebPublish')?.addEventListener('click', () => this.switchTab('web'));
     document.getElementById('tabImageUpload')?.addEventListener('click', () => this.switchTab('image'));
     
     // CSV file drop zone
@@ -450,32 +402,25 @@ class BannerAnalyticsSystem {
 
   switchTab(tab) {
     const csvTab = document.getElementById('csvUploadTab');
-    const webTab = document.getElementById('webPublishTab');
     const imageTab = document.getElementById('imageUploadTab');
     const csvButton = document.getElementById('tabCSVUpload');
-    const webButton = document.getElementById('tabWebPublish');
     const imageButton = document.getElementById('tabImageUpload');
     const uploadCSVButton = document.getElementById('uploadCSVButton');
     const uploadImagesButton = document.getElementById('uploadImagesButton');
-    const saveButton = document.getElementById('saveConfigButton');
     
     // Hide all tabs
     csvTab?.classList.add('hidden');
-    webTab?.classList.add('hidden');
     imageTab?.classList.add('hidden');
     
     // Remove active state from all buttons
     csvButton?.classList.remove('active', 'border-blue-600', 'text-blue-600');
     csvButton?.classList.add('border-transparent', 'text-gray-500');
-    webButton?.classList.remove('active', 'border-blue-600', 'text-blue-600');
-    webButton?.classList.add('border-transparent', 'text-gray-500');
     imageButton?.classList.remove('active', 'border-blue-600', 'text-blue-600');
     imageButton?.classList.add('border-transparent', 'text-gray-500');
     
     // Hide all action buttons
     uploadCSVButton?.classList.add('hidden');
     uploadImagesButton?.classList.add('hidden');
-    saveButton?.classList.add('hidden');
     
     if (tab === 'csv') {
       csvTab?.classList.remove('hidden');
@@ -487,11 +432,6 @@ class BannerAnalyticsSystem {
       imageButton?.classList.add('active', 'border-blue-600', 'text-blue-600');
       imageButton?.classList.remove('border-transparent', 'text-gray-500');
       uploadImagesButton?.classList.remove('hidden');
-    } else {
-      webTab?.classList.remove('hidden');
-      webButton?.classList.add('active', 'border-blue-600', 'text-blue-600');
-      webButton?.classList.remove('border-transparent', 'text-gray-500');
-      saveButton?.classList.remove('hidden');
     }
   }
 
@@ -724,61 +664,10 @@ class BannerAnalyticsSystem {
   showConfigModal() {
     const modal = document.getElementById('configModal');
     modal.classList.remove('hidden');
-    
-    // Load saved config
-    if (this.sheetConfig.spreadsheet_id) {
-      document.getElementById('configSpreadsheetId').value = this.sheetConfig.spreadsheet_id;
-    }
-    if (this.sheetConfig.gid) {
-      document.getElementById('configGid').value = this.sheetConfig.gid;
-    }
   }
 
   hideConfigModal() {
     document.getElementById('configModal').classList.add('hidden');
-  }
-
-  async saveAndSync() {
-    const spreadsheet_id = document.getElementById('configSpreadsheetId').value.trim();
-    const gid = document.getElementById('configGid').value.trim() || '0';
-
-    if (!spreadsheet_id) {
-      alert('スプレッドシートIDを入力してください');
-      return;
-    }
-
-    this.saveSheetConfig({ spreadsheet_id, gid });
-    this.hideConfigModal();
-    await this.syncFromSheet();
-  }
-
-  async syncFromSheet() {
-    if (!this.sheetConfig.spreadsheet_id) {
-      alert('スプレッドシート設定が不完全です');
-      return;
-    }
-
-    const syncButton = document.getElementById('syncButton');
-    syncButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>同期中...';
-    syncButton.disabled = true;
-
-    try {
-      const response = await axios.post('/api/banners/sync-from-sheet', this.sheetConfig);
-      
-      if (response.data.success) {
-        alert(`✅ ${response.data.imported_count}件のバナーデータを同期しました`);
-        await this.loadBanners();
-        this.hideSetupGuide();
-      } else {
-        alert(`❌ 同期エラー: ${response.data.error}`);
-      }
-    } catch (error) {
-      console.error('Sync failed:', error);
-      alert('同期に失敗しました。設定を確認してください。');
-    } finally {
-      syncButton.innerHTML = '<i class="fas fa-sync mr-2"></i>スプレッドシート同期';
-      syncButton.disabled = false;
-    }
   }
 
   async loadBanners() {
