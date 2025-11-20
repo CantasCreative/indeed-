@@ -199,7 +199,8 @@ export function convertSheetDataToBanners(
   sheetRows: SheetRow[],
   areaMap: Map<string, string>,
   employmentTypeMap?: Map<string, string>,
-  mainAppealsMap?: Map<string, string>
+  mainAppealsMap?: Map<string, string>,
+  visualTypeMap?: Map<string, string>
 ): any[] {
   return sheetRows.map(row => {
     // 必須フィールドのチェック
@@ -267,6 +268,16 @@ export function convertSheetDataToBanners(
       }
     }
 
+    // ビジュアル種別コードの変換（名前→codeへのマッピング）
+    let visualType = row['人ありなし'] || row['人あり無し'] || row['ビジュアル種別'] || undefined;
+    if (visualType && visualTypeMap) {
+      const visualTypeName = String(visualType).trim();
+      const mappedCode = visualTypeMap.get(visualTypeName);
+      if (mappedCode) {
+        visualType = mappedCode;
+      }
+    }
+
     return {
       image_id: String(row['参照番号']),
       company_name: row['企業名'] || undefined,
@@ -277,7 +288,7 @@ export function convertSheetDataToBanners(
       ctr: parseFloat(ctr.toFixed(2)),
       employment_type: employmentType,
       banner_image_url: imageUrl,
-      visual_type: row['人ありなし'] || row['人あり無し'] || row['ビジュアル種別'] || undefined,
+      visual_type: visualType,
       main_appeals: mainAppeals,
       sub_appeals: subAppeals,
       main_color: row['色味'] || row['メインカラー'] || undefined,
