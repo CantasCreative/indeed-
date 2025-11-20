@@ -85,7 +85,7 @@ export async function createBannerKnowledge(
   if (data.main_appeals && data.main_appeals.length > 0) {
     for (const appealText of data.main_appeals) {
       await db
-        .prepare('INSERT INTO banner_main_appeals (knowledge_id, appeal_code) VALUES (?, ?)')
+        .prepare('INSERT INTO banner_main_appeals (knowledge_id, main_appeal_code) VALUES (?, ?)')
         .bind(knowledgeId, appealText)
         .run();
     }
@@ -96,7 +96,7 @@ export async function createBannerKnowledge(
   if (data.sub_appeals && data.sub_appeals.length > 0) {
     for (const appealText of data.sub_appeals) {
       await db
-        .prepare('INSERT INTO banner_sub_appeals (knowledge_id, appeal_code) VALUES (?, ?)')
+        .prepare('INSERT INTO banner_sub_appeals (knowledge_id, sub_appeal_code) VALUES (?, ?)')
         .bind(knowledgeId, appealText)
         .run();
     }
@@ -124,7 +124,7 @@ export async function searchBannerKnowledge(
   // Join with main appeals if needed
   if (params.main_appeals && params.main_appeals.length > 0) {
     query += ' INNER JOIN banner_main_appeals bma ON bk.knowledge_id = bma.knowledge_id';
-    conditions.push(`bma.appeal_code IN (${params.main_appeals.map(() => '?').join(',')})`);
+    conditions.push(`bma.main_appeal_code IN (${params.main_appeals.map(() => '?').join(',')})`);
     bindings.push(...params.main_appeals);
   }
 
@@ -176,17 +176,17 @@ export async function searchBannerKnowledge(
 
     // Get main appeals
     const appealsResult = await db
-      .prepare('SELECT appeal_code FROM banner_main_appeals WHERE knowledge_id = ?')
+      .prepare('SELECT main_appeal_code FROM banner_main_appeals WHERE knowledge_id = ?')
       .bind(item.knowledge_id)
       .all();
-    item.main_appeals = appealsResult.results.map((r: any) => r.appeal_code);
+    item.main_appeals = appealsResult.results.map((r: any) => r.main_appeal_code);
 
     // Get sub appeals
     const subAppealsResult = await db
-      .prepare('SELECT appeal_code FROM banner_sub_appeals WHERE knowledge_id = ?')
+      .prepare('SELECT sub_appeal_code FROM banner_sub_appeals WHERE knowledge_id = ?')
       .bind(item.knowledge_id)
       .all();
-    item.sub_appeals = subAppealsResult.results.map((r: any) => r.appeal_code);
+    item.sub_appeals = subAppealsResult.results.map((r: any) => r.sub_appeal_code);
   }
 
   return items;
@@ -218,17 +218,17 @@ export async function getBannerKnowledgeById(
 
   // Get main appeals
   const appealsResult = await db
-    .prepare('SELECT appeal_code FROM banner_main_appeals WHERE knowledge_id = ?')
+    .prepare('SELECT main_appeal_code FROM banner_main_appeals WHERE knowledge_id = ?')
     .bind(knowledgeId)
     .all();
-  item.main_appeals = appealsResult.results.map((r: any) => r.appeal_code);
+  item.main_appeals = appealsResult.results.map((r: any) => r.main_appeal_code);
 
   // Get sub appeals
   const subAppealsResult = await db
-    .prepare('SELECT appeal_code FROM banner_sub_appeals WHERE knowledge_id = ?')
+    .prepare('SELECT sub_appeal_code FROM banner_sub_appeals WHERE knowledge_id = ?')
     .bind(knowledgeId)
     .all();
-  item.sub_appeals = subAppealsResult.results.map((r: any) => r.appeal_code);
+  item.sub_appeals = subAppealsResult.results.map((r: any) => r.sub_appeal_code);
 
   return item;
 }
@@ -259,17 +259,17 @@ export async function getBannerKnowledgeByImageId(
 
   // Get main appeals
   const appealsResult = await db
-    .prepare('SELECT appeal_code FROM banner_main_appeals WHERE knowledge_id = ?')
+    .prepare('SELECT main_appeal_code FROM banner_main_appeals WHERE knowledge_id = ?')
     .bind(item.knowledge_id)
     .all();
-  item.main_appeals = appealsResult.results.map((r: any) => r.appeal_code);
+  item.main_appeals = appealsResult.results.map((r: any) => r.main_appeal_code);
 
   // Get sub appeals
   const subAppealsResult = await db
-    .prepare('SELECT appeal_code FROM banner_sub_appeals WHERE knowledge_id = ?')
+    .prepare('SELECT sub_appeal_code FROM banner_sub_appeals WHERE knowledge_id = ?')
     .bind(item.knowledge_id)
     .all();
-  item.sub_appeals = subAppealsResult.results.map((r: any) => r.appeal_code);
+  item.sub_appeals = subAppealsResult.results.map((r: any) => r.sub_appeal_code);
 
   return item;
 }
@@ -334,14 +334,14 @@ export async function upsertBannerKnowledge(
     // Insert main appeals
     if (data.main_appeals && data.main_appeals.length > 0) {
       for (const appeal of data.main_appeals) {
-        await db.prepare('INSERT INTO banner_main_appeals (knowledge_id, appeal_code) VALUES (?, ?)').bind(existing.knowledge_id, appeal).run();
+        await db.prepare('INSERT INTO banner_main_appeals (knowledge_id, main_appeal_code) VALUES (?, ?)').bind(existing.knowledge_id, appeal).run();
       }
     }
 
     // Insert sub appeals
     if (data.sub_appeals && data.sub_appeals.length > 0) {
       for (const appeal of data.sub_appeals) {
-        await db.prepare('INSERT INTO banner_sub_appeals (knowledge_id, appeal_code) VALUES (?, ?)').bind(existing.knowledge_id, appeal).run();
+        await db.prepare('INSERT INTO banner_sub_appeals (knowledge_id, sub_appeal_code) VALUES (?, ?)').bind(existing.knowledge_id, appeal).run();
       }
     }
 
