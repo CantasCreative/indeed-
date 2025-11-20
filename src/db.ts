@@ -40,7 +40,6 @@ export async function getAtmospheres(db: D1Database): Promise<DictionaryItem[]> 
 export async function createBannerKnowledge(
   db: D1Database,
   data: CreateBannerRequest,
-  bannerImageKey?: string,
   bannerImageUrl?: string
 ): Promise<string> {
   const knowledgeId = generateId();
@@ -50,9 +49,9 @@ export async function createBannerKnowledge(
     .prepare(`
       INSERT INTO banner_knowledge (
         knowledge_id, image_id, company_name, job_title, impressions,
-        clicks, ctr, employment_type, banner_image_key, banner_image_url, 
+        clicks, ctr, employment_type, banner_image_url, 
         visual_type, main_color, atmosphere, extracted_text, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       knowledgeId,
@@ -63,7 +62,6 @@ export async function createBannerKnowledge(
       data.clicks || 0,
       data.ctr || 0.0,
       data.employment_type || null,
-      bannerImageKey || data.image_id || 'placeholder',
       data.banner_image_url || bannerImageUrl || null,
       data.visual_type || null,
       data.main_color || null,
