@@ -5,11 +5,15 @@
   "pages_build_output_dir": "./dist",
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
   
-  // D1 Database - Cloudflare Pagesダッシュボードで設定済み
-  // バインディング名: DB
-  // データベース: webapp-production (16713b21-32eb-4c25-b880-257c3dc35af1)
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "webapp-production",
+      "database_id": "16713b21-32eb-4c25-b880-257c3dc35af1"
+    }
+  ]
   
   // R2 Bucket - 現在未使用（画像アップロード機能は今後実装予定）
 }
