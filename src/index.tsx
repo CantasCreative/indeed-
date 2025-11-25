@@ -157,61 +157,13 @@ app.post('/api/banners/sync-from-csv', async (c) => {
     const banners = sheets.convertSheetDataToBanners(sheetRows, areaMap, employmentTypeMap, mainAppealsMap, visualTypeMap);
 
     // Migrate images from external storage (Google Drive, Dropbox) to R2
+    // Image migration disabled - keep external URLs as-is
     const migrationResults = {
       total: 0,
       migrated: 0,
       failed: 0,
-      skipped: 0
+      skipped: banners.filter(b => b.banner_image_url).length
     };
-
-    for (const banner of banners) {
-      if (banner.banner_image_url && sheets.isExternalStorageUrl(banner.banner_image_url)) {
-        migrationResults.total++;
-        try {
-          // Download image from external URL and upload to R2
-          const response = await fetch(banner.banner_image_url);
-          
-          if (!response.ok) {
-            console.warn(`Failed to fetch image for ${banner.image_id}: ${response.status}`);
-            migrationResults.failed++;
-            continue;
-          }
-
-          const contentType = response.headers.get('Content-Type');
-          if (!contentType || !contentType.startsWith('image/')) {
-            console.warn(`Invalid content type for ${banner.image_id}: ${contentType}`);
-            migrationResults.failed++;
-            continue;
-          }
-
-          // Generate unique key for R2
-          const timestamp = Date.now();
-          const randomStr = Math.random().toString(36).substring(2, 15);
-          const ext = contentType.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
-          const key = `banners/${timestamp}-${randomStr}.${ext}`;
-
-          // Upload to R2
-          const arrayBuffer = await response.arrayBuffer();
-          await c.env.BANNER_BUCKET.put(key, arrayBuffer, {
-            httpMetadata: {
-              contentType: contentType,
-            },
-          });
-
-          // Update banner with new R2 URL
-          banner.banner_image_url = `/api/images/${key}`;
-          migrationResults.migrated++;
-          
-          console.log(`Migrated image for ${banner.image_id}: ${key}`);
-        } catch (error: any) {
-          console.error(`Failed to migrate image for ${banner.image_id}:`, error);
-          migrationResults.failed++;
-          // Keep original URL if migration fails
-        }
-      } else if (banner.banner_image_url) {
-        migrationResults.skipped++;
-      }
-    }
 
     // Upsert data (update existing or create new)
     // No need to clear all data - preserve existing banners and image URLs
@@ -327,189 +279,36 @@ app.delete('/api/banners/:id', async (c) => {
 });
 
 // Upload banner image to R2
+// Image upload disabled - using external URLs only
 app.post('/api/upload', async (c) => {
-  try {
-    const formData = await c.req.formData();
-    const file = formData.get('file') as File;
-    
-    if (!file) {
-      return c.json({ success: false, error: 'No file provided' }, 400);
-    }
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      return c.json({ success: false, error: 'Invalid file type. Only images are allowed.' }, 400);
-    }
-
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      return c.json({ success: false, error: 'File size exceeds 5MB limit' }, 400);
-    }
-
-    // Generate unique key for R2
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 15);
-    const ext = file.name.split('.').pop();
-    const key = `banners/${timestamp}-${randomStr}.${ext}`;
-
-    // Upload to R2
-    const arrayBuffer = await file.arrayBuffer();
-    await c.env.BANNER_BUCKET.put(key, arrayBuffer, {
-      httpMetadata: {
-        contentType: file.type,
-      },
-    });
-
-    // Generate public URL
-    const url = `/api/images/${key}`;
-
-    return c.json({ success: true, key, url, originalName: file.name });
-  } catch (error: any) {
-    return c.json({ success: false, error: error.message }, 500);
-  }
+  return c.json({ 
+    success: false, 
+    error: '画像アップロード機能は無効化されています。外部URL（Google Drive、Imgurなど）を使用してください。' 
+  }, 400);
 });
 
-// Batch upload multiple images
+// Batch upload disabled - using external URLs only
 app.post('/api/upload-batch', async (c) => {
-  try {
-    const formData = await c.req.formData();
-    const files: File[] = [];
-    
-    // Collect all files from formData
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        files.push(value);
-      }
-    }
-
-    if (files.length === 0) {
-      return c.json({ success: false, error: 'No files provided' }, 400);
-    }
-
-    const results = [];
-    const errors = [];
-
-    for (const file of files) {
-      try {
-        // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) {
-          errors.push({ filename: file.name, error: 'Invalid file type' });
-          continue;
-        }
-
-        // Validate file size (max 5MB)
-        const maxSize = 5 * 1024 * 1024;
-        if (file.size > maxSize) {
-          errors.push({ filename: file.name, error: 'File size exceeds 5MB' });
-          continue;
-        }
-
-        // Generate unique key
-        const timestamp = Date.now();
-        const randomStr = Math.random().toString(36).substring(2, 15);
-        const ext = file.name.split('.').pop();
-        const key = `banners/${timestamp}-${randomStr}.${ext}`;
-
-        // Upload to R2
-        const arrayBuffer = await file.arrayBuffer();
-        await c.env.BANNER_BUCKET.put(key, arrayBuffer, {
-          httpMetadata: {
-            contentType: file.type,
-          },
-        });
-
-        results.push({
-          originalName: file.name,
-          key,
-          url: `/api/images/${key}`,
-          size: file.size,
-        });
-      } catch (error: any) {
-        errors.push({ filename: file.name, error: error.message });
-      }
-    }
-
-    return c.json({ 
-      success: true, 
-      uploaded: results.length,
-      failed: errors.length,
-      results,
-      errors: errors.length > 0 ? errors : undefined
-    });
-  } catch (error: any) {
-    return c.json({ success: false, error: error.message }, 500);
-  }
+  return c.json({ 
+    success: false, 
+    error: '画像アップロード機能は無効化されています。外部URL（Google Drive、Imgurなど）を使用してください。' 
+  }, 400);
 });
 
-// Download image from URL and upload to R2 (for migrating Google Drive images)
+// Upload from URL disabled - using external URLs directly
 app.post('/api/upload-from-url', async (c) => {
-  try {
-    const { url, filename } = await c.req.json();
-    
-    if (!url) {
-      return c.json({ success: false, error: 'URL is required' }, 400);
-    }
-
-    // Fetch image from URL
-    const response = await fetch(url);
-    if (!response.ok) {
-      return c.json({ success: false, error: `Failed to fetch image: ${response.status}` }, 400);
-    }
-
-    const contentType = response.headers.get('Content-Type');
-    if (!contentType || !contentType.startsWith('image/')) {
-      return c.json({ success: false, error: 'URL does not point to an image' }, 400);
-    }
-
-    // Generate unique key
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 15);
-    const ext = contentType.split('/')[1] || 'jpg';
-    const key = `banners/${timestamp}-${randomStr}.${ext}`;
-
-    // Upload to R2
-    const arrayBuffer = await response.arrayBuffer();
-    await c.env.BANNER_BUCKET.put(key, arrayBuffer, {
-      httpMetadata: {
-        contentType: contentType,
-      },
-    });
-
-    return c.json({ 
-      success: true, 
-      key, 
-      url: `/api/images/${key}`,
-      originalUrl: url,
-      filename: filename || 'downloaded-image'
-    });
-  } catch (error: any) {
-    console.error('Upload from URL error:', error);
-    return c.json({ success: false, error: error.message }, 500);
-  }
+  return c.json({ 
+    success: false, 
+    error: '画像アップロード機能は無効化されています。外部URLを直接データベースに保存してください。' 
+  }, 400);
 });
 
-// Get image from R2
+// R2 image serving disabled - using external URLs directly
 app.get('/api/images/*', async (c) => {
-  try {
-    const key = c.req.path.replace('/api/images/', '');
-    const object = await c.env.BANNER_BUCKET.get(key);
-
-    if (!object) {
-      return c.notFound();
-    }
-
-    return new Response(object.body, {
-      headers: {
-        'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
-        'Cache-Control': 'public, max-age=31536000',
-      },
-    });
-  } catch (error: any) {
-    return c.json({ success: false, error: error.message }, 500);
-  }
+  return c.json({ 
+    success: false, 
+    error: 'R2画像配信は無効化されています。外部URLを使用してください。' 
+  }, 404);
 });
 
 // Proxy external images (for Google Drive, etc.) to avoid CORS issues
